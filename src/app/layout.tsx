@@ -45,7 +45,7 @@ const jsonLd = {
     "@type": "ListItem",
     position: i + 1,
     name: `${s.name} Solver`,
-    url: s.url,
+    url: `${SITE.url}${s.url}`,
   })),
 };
 

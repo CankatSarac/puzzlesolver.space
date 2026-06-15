@@ -1,37 +1,87 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  --color-canvas: #faf9f6;
-  --color-ink: #1a1a2e;
-  --color-muted: #6b7280;
-  --color-line: #e9e7e0;
+@layer base {
+  :root {
+    /* Playful Puzzle Board palette (HSL channels so /alpha modifiers work) */
+    --canvas: 48 33% 97%; /* #faf9f6 */
+    --ink: 240 28% 14%; /* #1a1a2e */
+    --subtle: 220 9% 46%; /* #6b7280 */
+    --line: 45 23% 89%; /* #e9e7e0 */
 
-  --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    /* shadcn tokens mapped onto the warm palette */
+    --background: 48 33% 97%;
+    --foreground: 240 28% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 28% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 28% 14%;
+    --primary: 240 28% 14%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 48 20% 94%;
+    --secondary-foreground: 240 28% 14%;
+    --muted: 48 20% 94%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 48 20% 94%;
+    --accent-foreground: 240 28% 14%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 45 23% 89%;
+    --input: 45 23% 89%;
+    --ring: 240 28% 14%;
+    --radius: 0.5rem;
+  }
 
-  --radius-card: 1.25rem;
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-body;
+    /* Static "puzzle board" dot grid */
+    background-image: radial-gradient(circle, hsl(var(--ink) / 0.05) 1px, transparent 1px);
+    background-size: 22px 22px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Visible keyboard focus for all interactive elements */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid hsl(var(--ink));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
-:root {
-  color-scheme: light;
+@layer components {
+  /* Animated hero layer — owns its OWN larger-spaced grid so the drift is visible
+     and reads as depth over the static body grid (not a duplicate). */
+  .board-bg {
+    background-image: radial-gradient(circle, hsl(var(--ink) / 0.06) 1.5px, transparent 1.5px);
+    background-size: 44px 44px;
+    animation: board-drift 60s linear infinite;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, #000 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, #000 30%, transparent 75%);
+  }
+
+  /* Per-card hover accent — driven by the inline --accent custom property.
+     Precomputed --accent-shadow is set per card in data, avoiding color-mix(). */
+  .solver-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .solver-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 18px 40px -12px var(--accent-shadow);
+  }
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
-  font-family: var(--font-body);
-  /* Subtle "puzzle board" dot grid */
-  background-image: radial-gradient(circle, rgba(26, 26, 46, 0.05) 1px, transparent 1px);
-  background-size: 22px 22px;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-/* Slow drift of the dot grid for a living, playful feel */
 @keyframes board-drift {
   from {
     background-position: 0 0;
@@ -41,8 +91,12 @@ body {
   }
 }
 
-.board-bg {
-  animation: board-drift 60s linear infinite;
+/* Gradient headline word: stay legible in forced-colors mode */
+@media (forced-colors: active) {
+  .gradient-word {
+    -webkit-text-fill-color: currentColor;
+    color: CanvasText;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

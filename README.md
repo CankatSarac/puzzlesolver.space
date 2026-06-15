@@ -1,10 +1,17 @@
-# PuzzleSolver Hub — puzzlesolver.space
+# PuzzleSolver — puzzlesolver.space
 
-A design-centric landing page that collects all of [Cankat Sarac](https://www.linkedin.com/in/cankatsarac/)'s
-free online logic-puzzle solvers in one place. Each card links out to a live solver;
-not-yet-released solvers show as "Coming Soon".
+A design-centric hub **and** all of [Cankat Sarac](https://www.linkedin.com/in/cankatsarac/)'s
+logic-puzzle solvers, unified into **one Next.js app, one Vercel deploy**.
 
-Built with **Next.js 15 · TypeScript · Tailwind CSS v4 · Framer Motion**.
+- Landing page at `/` — the "Playful Puzzle Board" hub with custom SVG icons per puzzle.
+- Each solver is an internal route:
+  - `/tango` — LinkedIn Tango (suns & moons)
+  - `/battleship` — Battleship / Bimaru
+  - `/skyscraper` — Skyscraper (edge-clue constraint solver)
+  - `/slitherlink` — Slitherlink (loop puzzle)
+- Coming soon: Queens, Zip, Star Battle, Bridges.
+
+Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS v3 · shadcn/ui · Framer Motion**.
 
 ## Develop
 
@@ -16,29 +23,46 @@ npm run dev      # http://localhost:3000
 ## Build
 
 ```bash
-npm run build
-npm run start
+npm run build && npm run start
 ```
 
-## Adding or launching a solver
+## Architecture
 
-Everything is driven by one file: [`src/data/solvers.ts`](src/data/solvers.ts).
+```
+src/
+  app/
+    page.tsx                # hub landing
+    layout.tsx              # fonts, metadata, JSON-LD
+    globals.css             # Tailwind v3 + shadcn tokens + Playful Puzzle Board
+    tango|battleship|skyscraper|slitherlink/page.tsx   # solver routes (+ per-route SEO)
+    sitemap.ts robots.ts icon.svg opengraph-image.tsx
+  components/
+    Header Hero SolverGrid SolverCard Features Footer
+    PuzzleIcons.tsx         # custom per-puzzle SVG icons
+    ui/                     # shared shadcn primitives (button, card, select, …)
+  solvers/<id>/             # each solver's component + logic, namespaced
+  data/
+    solvers.ts              # single source of truth (catalog + accents + routes)
+    site.ts                 # domain, author, links
+  lib/utils.ts              # shadcn cn()
+```
 
-- **Launch a "coming-soon" solver:** set its `status` to `"available"` and add the `url`.
-- **Add a new solver:** append an entry to the `SOLVERS` array.
+## Adding / launching a solver
 
-No component or layout changes are needed — the grid, cards, SEO `ItemList`, and counts
-all read from that array.
+1. Build the solver under `src/solvers/<id>/` and a route `src/app/<id>/page.tsx`.
+2. In `src/data/solvers.ts`, set the entry's `status` to `"available"` and `url` to `/<id>`.
 
-Site-wide constants (domain, author, social/legal links) live in
-[`src/data/site.ts`](src/data/site.ts).
+The grid, cards, icons, sitemap, and JSON-LD all read from `solvers.ts`.
 
 ## Deploy (Vercel)
 
-1. Push this folder to a GitHub repo.
-2. Import the repo in Vercel — it auto-detects Next.js, no config needed.
-3. Add the custom domain `puzzlesolver.space` in Vercel → Settings → Domains.
+Push to GitHub → import in Vercel (auto-detects Next.js; `vercel.json` pins the framework).
+Add the custom domain `puzzlesolver.space` under Settings → Domains.
 
-## Design spec
+## Notes
 
-See [`docs/superpowers/specs/2026-06-15-puzzlesolver-hub-design.md`](docs/superpowers/specs/2026-06-15-puzzlesolver-hub-design.md).
+- Solver source repos (`linkedin-tango-puzzle-solver`, `battleship-solver`,
+  `slitherlink-solver`, `skyscapper-solver`) are now vendored here as routes; this app
+  supersedes the per-solver `*.puzzlesolver.fun` deployments.
+- The Skyscraper route is a **new UI** wired to the existing `AdvancedSkyscraperSolver`
+  logic (the original `skyscapper-solver` repo shipped a battleship UI by mistake).

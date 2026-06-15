@@ -2,21 +2,21 @@ import { Coffee, Github, Linkedin, Twitter } from "lucide-react";
 import { SITE } from "@/data/site";
 
 export function Footer() {
-  const year = 2026;
+  const year = new Date().getFullYear();
   return (
-    <footer className="mt-12 border-t border-[var(--color-line)]">
+    <footer className="mt-12 border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-5 py-10 sm:flex-row sm:justify-between">
         <div className="text-center sm:text-left">
-          <a href="#top" className="font-[family-name:var(--font-display)] text-lg font-bold">
+          <a href="#top" className="font-display text-lg font-bold text-ink">
             Puzzle<span className="text-rose-500">Solver</span>
           </a>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">
+          <p className="mt-1 text-sm text-subtle">
             Built by{" "}
             <a
               href={SITE.links.linkedin}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-[var(--color-ink)] underline-offset-2 hover:underline"
+              className="font-medium text-ink underline-offset-2 hover:underline"
             >
               {SITE.author}
             </a>
@@ -40,12 +40,12 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-[var(--color-line)]">
-        <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-x-5 gap-y-2 px-5 py-4 text-sm text-[var(--color-muted)] sm:justify-end">
-          <a href={SITE.links.privacy} className="hover:text-[var(--color-ink)]">
+      <div className="border-t border-line">
+        <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-x-5 gap-y-2 px-5 py-4 text-sm text-subtle sm:justify-end">
+          <a href={SITE.links.privacy} className="hover:text-ink">
             Privacy
           </a>
-          <a href={SITE.links.terms} className="hover:text-[var(--color-ink)]">
+          <a href={SITE.links.terms} className="hover:text-ink">
             Terms
           </a>
         </div>
@@ -69,7 +69,7 @@ function FooterIcon({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-line)] bg-white text-[var(--color-muted)] transition-colors hover:text-[var(--color-ink)]"
+      className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white text-subtle transition-colors hover:text-ink"
     >
       {children}
     </a>

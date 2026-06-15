@@ -1,96 +1,93 @@
 "use client";
 
-import { motion } from "framer-motion";
+import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Lock } from "lucide-react";
 import type { CSSProperties } from "react";
+import { PUZZLE_ICONS } from "@/components/PuzzleIcons";
 import type { Solver } from "@/data/solvers";
 
-type AccentStyle = CSSProperties & { "--accent": string };
+type AccentStyle = CSSProperties & {
+  "--accent": string;
+  "--accent-shadow": string;
+};
 
 export function SolverCard({ solver }: { solver: Solver }) {
+  const reduce = useReducedMotion();
   const isAvailable = solver.status === "available";
-  const style: AccentStyle = { "--accent": solver.accent };
+  const Icon = PUZZLE_ICONS[solver.iconId];
+  const style: AccentStyle = {
+    "--accent": solver.accent,
+    "--accent-shadow": solver.accentShadow,
+  };
 
   const inner = (
     <>
+      {isAvailable && (
+        <span
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-1 rounded-t-card"
+          style={{ backgroundColor: solver.accent }}
+        />
+      )}
       <div className="flex items-start justify-between">
         <span
           aria-hidden
-          className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl"
-          style={{ backgroundColor: `color-mix(in srgb, var(--accent) 14%, white)` }}
+          className="flex h-14 w-14 items-center justify-center rounded-2xl"
+          style={{
+            backgroundColor: isAvailable ? solver.accentTint : "hsl(var(--muted))",
+            color: isAvailable ? solver.accent : "hsl(var(--subtle))",
+          }}
         >
-          {solver.icon}
+          <Icon className="h-8 w-8" />
         </span>
         {isAvailable ? (
           <span
             className="rounded-full px-3 py-1 text-xs font-semibold"
-            style={{
-              color: "var(--accent)",
-              backgroundColor: `color-mix(in srgb, var(--accent) 12%, white)`,
-            }}
+            style={{ color: solver.accentText, backgroundColor: solver.accentTint }}
           >
             Available
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-line)] px-3 py-1 text-xs font-semibold text-[var(--color-muted)]">
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-subtle">
             <Lock size={11} />
             Coming soon
           </span>
         )}
       </div>
 
-      <h3 className="mt-5 font-[family-name:var(--font-display)] text-2xl font-bold">
-        {solver.name}
-      </h3>
-      <p className="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">
-        {solver.tagline}
-      </p>
+      <h3 className="mt-5 font-display text-2xl font-bold text-ink">{solver.name}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-subtle">{solver.tagline}</p>
 
-      <div className="mt-6 flex items-center gap-1.5 text-sm font-semibold" style={{ color: isAvailable ? "var(--accent)" : "var(--color-muted)" }}>
+      <div className="mt-6 flex items-center gap-1.5 text-sm font-semibold">
         {isAvailable ? (
-          <>
-            Solve now
-            <ArrowRight
-              size={16}
-              className="transition-transform duration-200 group-hover:translate-x-1"
-            />
-          </>
+          <span className="flex items-center gap-1.5" style={{ color: solver.accentText }}>
+            Open solver
+            <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-1" />
+          </span>
         ) : (
-          <span className="text-[var(--color-muted)]">In development</span>
+          <span className="text-subtle">In development</span>
         )}
       </div>
     </>
   );
 
-  const baseClass =
-    "group relative block h-full rounded-[var(--radius-card)] border bg-white p-6 text-left transition-shadow";
+  const base =
+    "solver-card group relative block h-full rounded-card border p-6 text-left";
 
   if (!isAvailable) {
     return (
-      <div
-        style={style}
-        aria-disabled
-        className={`${baseClass} cursor-default border-[var(--color-line)] opacity-70`}
-      >
+      <div style={style} className={`${base} border-line bg-canvas`}>
         {inner}
       </div>
     );
   }
 
   return (
-    <motion.a
-      href={solver.url ?? "#"}
-      style={style}
-      whileHover={{ y: -6 }}
-      transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      className={`${baseClass} border-[var(--color-line)] hover:border-[color-mix(in_srgb,var(--accent)_45%,white)] hover:shadow-[0_18px_40px_-12px_color-mix(in_srgb,var(--accent)_55%,transparent)]`}
-    >
-      <span
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-1 rounded-t-[var(--radius-card)]"
-        style={{ backgroundColor: "var(--accent)" }}
-      />
-      {inner}
-    </motion.a>
+    <motion.div whileHover={reduce ? undefined : { y: -6 }} transition={{ type: "spring", stiffness: 320, damping: 22 }}>
+      <Link href={solver.url ?? "#"} style={style} className={`${base} border-line bg-white`}>
+        {inner}
+      </Link>
+    </motion.div>
   );
 }
