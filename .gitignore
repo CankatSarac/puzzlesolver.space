@@ -30,3 +30,7 @@ next-env.d.ts
 
 # vercel
 .vercel
+
+# scratch logo source files (web assets live in public/ and src/app/)
+/website_logo.png
+/ChatGPT Image*.png

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { SITE } from "@/data/site";
@@ -6,6 +6,10 @@ import { SOLVERS } from "@/data/solvers";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
+
+export const viewport: Viewport = {
+  themeColor: "#faf9f6",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),

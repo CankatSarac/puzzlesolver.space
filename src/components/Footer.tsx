@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Coffee, Github, Linkedin, Twitter } from "lucide-react";
 import { SITE } from "@/data/site";
 
@@ -7,7 +8,8 @@ export function Footer() {
     <footer className="mt-12 border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-5 py-10 sm:flex-row sm:justify-between">
         <div className="text-center sm:text-left">
-          <a href="#top" className="font-display text-lg font-bold text-ink">
+          <a href="#top" className="inline-flex items-center gap-2 font-display text-lg font-bold text-ink">
+            <Image src="/logo.png" alt="PuzzleSolver logo" width={28} height={28} className="h-7 w-7 rounded-md" />
             Puzzle<span className="text-rose-500">Solver</span>
           </a>
           <p className="mt-1 text-sm text-subtle">
