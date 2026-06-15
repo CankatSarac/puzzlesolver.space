@@ -13,7 +13,10 @@ export default function BattleshipPage() {
   return (
     <>
       <Header />
-      <BattleshipSolver />
+      <main>
+        <h1 className="sr-only">Battleship Puzzle Solver</h1>
+        <BattleshipSolver />
+      </main>
     </>
   );
 }

@@ -13,7 +13,9 @@ export default function SkyscraperPage() {
   return (
     <>
       <Header />
-      <SkyscraperSolver />
+      <main>
+        <SkyscraperSolver />
+      </main>
     </>
   );
 }

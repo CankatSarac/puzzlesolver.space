@@ -13,7 +13,10 @@ export default function SlitherlinkPage() {
   return (
     <>
       <Header />
-      <SlitherlinkSolver />
+      <main>
+        <h1 className="sr-only">Slitherlink Puzzle Solver</h1>
+        <SlitherlinkSolver />
+      </main>
     </>
   );
 }

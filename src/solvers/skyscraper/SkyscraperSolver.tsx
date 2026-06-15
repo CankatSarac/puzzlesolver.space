@@ -22,12 +22,13 @@ function emptyClues(size: number): Clues {
   };
 }
 
-// A solvable 4×4 example (top/bottom/left/right edge clues).
+// A verified, uniquely-solvable 4×4 example.
+// Solution grid: [[2,1,4,3],[3,4,1,2],[4,3,2,1],[1,2,3,4]].
 const EXAMPLE_4: Clues = {
-  top: [4, 2, 1, 2],
-  bottom: [1, 2, 3, 2],
-  left: [4, 2, 3, 1],
-  right: [1, 3, 2, 2],
+  top: [3, 2, 1, 2],
+  bottom: [2, 3, 2, 1],
+  left: [2, 2, 1, 4],
+  right: [2, 2, 4, 1],
 };
 
 export default function SkyscraperSolver() {
@@ -73,7 +74,9 @@ export default function SkyscraperSolver() {
         setMessage(
           found.length === 0
             ? "No solution found. Check that the clues are consistent."
-            : `Found ${found.length} solution${found.length > 1 ? "s" : ""}.`
+            : found.length >= 10
+              ? "Found 10+ solutions (showing the first 10) — add more clues to narrow it down."
+              : `Found ${found.length} solution${found.length > 1 ? "s" : ""}.`
         );
       } catch {
         setMessage("Something went wrong while solving. Please review the clues.");

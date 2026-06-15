@@ -40,6 +40,7 @@ export function Header() {
             href={SITE.links.buyMeACoffee}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="Buy me a coffee"
             className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3.5 py-2 text-sm font-semibold text-amber-950 transition-transform hover:scale-105"
           >
             <Coffee size={16} />

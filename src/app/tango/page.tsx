@@ -13,7 +13,10 @@ export default function TangoPage() {
   return (
     <>
       <Header />
-      <TangoSolver />
+      <main>
+        <h1 className="sr-only">Tango Puzzle Solver</h1>
+        <TangoSolver />
+      </main>
     </>
   );
 }
