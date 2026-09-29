@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useState } from "react"
+import { Fragment, useRef, useState } from "react"
 import { Coffee } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -46,11 +46,14 @@ export default function TangoSolver() {
   const [currentSolutionIndex, setCurrentSolutionIndex] = useState(0)
   const [showAllSolutions, setShowAllSolutions] = useState(false)
   const [solutionCount, setSolutionCount] = useState(0)
+  // True when the search stopped at its limit, so more solutions than listed may exist.
+  const [solutionsCapped, setSolutionsCapped] = useState(false)
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'warning' | 'info'
     title: string
     message: string
   } | null>(null)
+  const notificationTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Reset to an empty board of the current size
   const initializeBoard = () => {
@@ -178,6 +181,7 @@ export default function TangoSolver() {
     setIsLoading(true)
     setAllSolutions([])
     setSolutionCount(0)
+    setSolutionsCapped(false)
     setShowAllSolutions(false)
     
     try {
@@ -235,19 +239,32 @@ export default function TangoSolver() {
       }
       
       solve(0, 0)
-      
+
+      // The search stops at maxSolutions or maxIterations, so it may not have seen every solution.
+      const capped = solutions.length >= maxSolutions || iterations > maxIterations
+
       setAllSolutions(solutions)
       setSolutionCount(solutions.length)
+      setSolutionsCapped(capped)
       
       if (solutions.length > 0) {
         setBoard(solutions[0])
+        setCurrentSolutionIndex(0)
         setSolved(true)
-        if (solutions.length === 1) {
+        if (solutions.length === 1 && !capped) {
           showNotification('success', 'Puzzle Solved!', 'Found a unique solution!')
         } else {
-          showNotification('success', 'Multiple Solutions Found!', `Found ${solutions.length} possible solutions.`)
+          showNotification(
+            'success',
+            'Multiple Solutions Found!',
+            capped
+              ? `Found ${solutions.length}+ solutions (showing the first ${solutions.length}). Add more clues to narrow it down.`
+              : `Found ${solutions.length} possible solutions.`,
+          )
           setShowAllSolutions(true)
         }
+      } else if (capped) {
+        showNotification('warning', 'Stopped Searching', 'The search hit its limit before finding a solution. Add more clues or check the ones you entered.')
       } else {
         showNotification('error', 'No Solution', 'This puzzle appears to be unsolvable with the given constraints.')
       }
@@ -339,7 +356,18 @@ export default function TangoSolver() {
         return false
       }
     }
-    
+
+    // Balance: a row or column never holds more than half its cells (rounded up) of one symbol.
+    // Without this the search can spend its whole budget under an unbalanced first row.
+    const maxPerLine = Math.ceil(gridSize / 2)
+    let inRow = 0
+    let inCol = 0
+    for (let i = 0; i < gridSize; i++) {
+      if (testBoard.grid[row][i] === symbol) inRow++
+      if (testBoard.grid[i][col] === symbol) inCol++
+    }
+    if (inRow > maxPerLine || inCol > maxPerLine) return false
+
     return true
   }
 
@@ -348,6 +376,7 @@ export default function TangoSolver() {
     initializeBoard()
     setAllSolutions([])
     setSolutionCount(0)
+    setSolutionsCapped(false)
     setCurrentSolutionIndex(0)
     setShowAllSolutions(false)
     setNotification(null)
@@ -378,30 +407,33 @@ export default function TangoSolver() {
   // Show notification helper
   const showNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string) => {
     setNotification({ type, title, message })
-    setTimeout(() => setNotification(null), 5000)
+    // One timer at a time, so an older toast's timer cannot hide a newer toast early.
+    if (notificationTimer.current) clearTimeout(notificationTimer.current)
+    notificationTimer.current = setTimeout(() => setNotification(null), 5000)
   }
 
   // Example puzzles for different grid sizes
   const getExamplePuzzles = () => {
     const examples = {
+      // 4×4 to 6×6 examples each have exactly one solution.
       4: [
         {
           name: "Easy 4x4",
           grid: [
-            [null, "sun", null, null],
-            [null, null, "moon", null],
+            [null, null, null, "moon"],
             [null, null, null, null],
-            ["moon", null, null, null]
+            ["moon", null, null, null],
+            [null, null, null, null]
           ] as Grid,
           horizontalConstraints: [
-            [null, "equals", null],
             [null, null, null],
-            ["different", null, null],
+            [null, null, null],
+            [null, "equals", null],
             [null, null, null]
           ] as HorizontalConstraints,
           verticalConstraints: [
             [null, null, null, null],
-            [null, null, null, null],
+            [null, null, "equals", null],
             [null, null, null, null]
           ] as VerticalConstraints
         }
@@ -410,23 +442,23 @@ export default function TangoSolver() {
         {
           name: "Easy 5x5",
           grid: [
-            [null, "sun", null, null, null],
-            [null, null, null, "moon", null],
+            [null, "sun", "sun", null, null],
             [null, null, null, null, null],
-            [null, null, "sun", null, null],
-            [null, null, null, null, null]
+            [null, null, null, null, "moon"],
+            [null, null, null, null, null],
+            [null, "moon", null, null, null]
           ] as Grid,
           horizontalConstraints: [
-            [null, null, "equals", null],
             [null, null, null, null],
             [null, "different", null, null],
+            ["equals", null, null, null],
             [null, null, null, null],
-            [null, null, null, null]
+            ["different", null, "equals", null]
           ] as HorizontalConstraints,
           verticalConstraints: [
+            [null, null, null, "different", null],
             [null, null, null, null, null],
-            [null, null, null, null, null],
-            [null, null, null, null, null],
+            ["different", "different", null, null, null],
             [null, null, null, null, null]
           ] as VerticalConstraints
         }
@@ -435,27 +467,27 @@ export default function TangoSolver() {
         {
           name: "Easy 6x6",
           grid: [
-            [null, "sun", null, null, null, null],
-            [null, null, null, "moon", null, null],
+            [null, null, null, null, "moon", null],
+            ["sun", null, null, null, null, null],
             [null, null, null, null, null, null],
+            [null, null, "sun", "moon", null, null],
             [null, null, null, null, null, null],
-            [null, null, "sun", null, null, null],
-            [null, null, null, null, null, null]
+            [null, "moon", null, null, null, null]
           ] as Grid,
           horizontalConstraints: [
-            [null, null, "equals", null, null],
+            ["equals", null, null, null, null],
+            [null, null, null, "different", null],
             [null, null, null, null, null],
-            [null, "different", null, null, null],
             [null, null, null, null, null],
             [null, null, null, null, null],
-            [null, null, null, null, null]
+            [null, null, null, null, "equals"]
           ] as HorizontalConstraints,
           verticalConstraints: [
             [null, null, null, null, null, null],
+            [null, "different", null, null, null, null],
+            [null, null, "different", "different", null, null],
             [null, null, null, null, null, null],
-            [null, null, null, null, null, null],
-            [null, null, null, null, null, null],
-            [null, null, null, null, null, null]
+            [null, "different", null, null, null, "equals"]
           ] as VerticalConstraints
         }
       ],
@@ -504,6 +536,11 @@ export default function TangoSolver() {
         verticalConstraints: example.verticalConstraints
       })
       setSolved(false)
+      setAllSolutions([])
+      setSolutionCount(0)
+      setSolutionsCapped(false)
+      setCurrentSolutionIndex(0)
+      setShowAllSolutions(false)
       showNotification('success', 'Example Loaded', `Successfully loaded: ${example.name}`)
     }
   }
@@ -624,9 +661,10 @@ export default function TangoSolver() {
               </Button>
             </div>
 
-            {/* Notification Toast */}
+            {/* Notification Toast. The wrapper is always mounted so screen readers announce each result. */}
+            <div role="status" aria-live="polite" className="fixed top-4 left-4 right-4 z-50 sm:left-auto sm:max-w-md">
             {notification && (
-              <div className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg border-l-4 ${(() => {
+              <div className={`p-4 rounded-lg shadow-lg border-l-4 ${(() => {
                 switch (notification.type) {
                   case 'success': return 'bg-green-50 border-green-400 text-green-800'
                   case 'error': return 'bg-red-50 border-red-400 text-red-800'
@@ -656,6 +694,7 @@ export default function TangoSolver() {
                 </div>
               </div>
             )}
+            </div>
 
             {/* Status */}
             {solved && (
@@ -667,7 +706,8 @@ export default function TangoSolver() {
                 {solutionCount > 1 && (
                   <div className="space-y-3">
                     <Badge variant="secondary" className="text-sm px-3 py-1 bg-gray-200 text-black border border-gray-300">
-                      🔢 {solutionCount} solution{solutionCount > 1 ? "s" : ""} found
+                      🔢 {solutionCount}
+                      {solutionsCapped ? "+" : ""} solution{solutionCount > 1 ? "s" : ""} found
                     </Badge>
                     
                     <div className="flex justify-center gap-2 items-center">
@@ -682,6 +722,7 @@ export default function TangoSolver() {
                       </Button>
                       <span className="text-sm px-3 py-1 bg-gray-100 rounded text-black">
                         Solution {currentSolutionIndex + 1} of {solutionCount}
+                        {solutionsCapped ? "+" : ""}
                       </span>
                       <Button
                         onClick={nextSolution}
@@ -822,7 +863,7 @@ export default function TangoSolver() {
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader>
                   <h2 className="text-lg font-semibold tracking-tight text-blue-800 flex items-center gap-2">
-                    🔢 All {solutionCount} Solutions
+                    🔢 {solutionsCapped ? `First ${solutionCount}` : `All ${solutionCount}`} Solutions
                   </h2>
                 </CardHeader>
                 <CardContent>
