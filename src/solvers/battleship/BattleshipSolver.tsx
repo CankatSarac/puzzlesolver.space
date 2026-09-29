@@ -168,7 +168,7 @@ export default function BattleshipSolver() {
       <div className="max-w-6xl mx-auto">
         <Card>
           <CardHeader className="text-center px-4 sm:px-6">
-            <h1 className="text-3xl font-bold leading-none tracking-tight">Battleship Puzzle Solver</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Battleship Puzzle Solver</h1>
             <p className="text-gray-600">
               Free online Battleship puzzle solver with interactive grid. Place ships according to row/column clues.
               Ships cannot touch each other, even diagonally.
@@ -321,7 +321,7 @@ export default function BattleshipSolver() {
             {showControls && (
               <Card className="bg-blue-50">
                 <CardHeader>
-                  <h2 className="text-lg font-semibold leading-none tracking-tight">How to Play</h2>
+                  <h2 className="text-lg font-semibold tracking-tight">How to Play</h2>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <p>• Place ships on the grid according to the row and column count clues</p>
@@ -338,7 +338,7 @@ export default function BattleshipSolver() {
             {/* Developer Contact Section */}
             <Card className="bg-gray-100 border-gray-200">
               <CardHeader>
-                <h2 className="text-lg font-semibold leading-none tracking-tight text-center">About the Developer</h2>
+                <h2 className="text-lg font-semibold tracking-tight text-center">About the Developer</h2>
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <p className="text-gray-600">

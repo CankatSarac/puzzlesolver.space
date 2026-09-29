@@ -525,7 +525,7 @@ export default function SlitherlinkSolver() {
       <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader className="text-center px-4 sm:px-6">
-            <h1 className="text-3xl font-bold leading-none tracking-tight">Slitherlink Puzzle Solver</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Slitherlink Puzzle Solver</h1>
             <p className="text-gray-600">
               Free online Slitherlink puzzle solver with interactive grid. Draw a single continuous loop where number
               clues indicate how many edges around each cell are part of the loop. Click edges to draw lines or mark
@@ -946,7 +946,7 @@ export default function SlitherlinkSolver() {
             {showAllSolutions && allSolutions.length >= 13 && (
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader>
-                  <h2 className="text-lg font-semibold leading-none tracking-tight text-blue-800 flex items-center gap-2">
+                  <h2 className="text-lg font-semibold tracking-tight text-blue-800 flex items-center gap-2">
                     🔢 All {solutionCount} Solutions
                   </h2>
                 </CardHeader>
@@ -1033,7 +1033,7 @@ export default function SlitherlinkSolver() {
             {showControls && (
               <Card className="bg-blue-50">
                 <CardHeader>
-                  <h2 className="text-lg font-semibold leading-none tracking-tight">How to Play</h2>
+                  <h2 className="text-lg font-semibold tracking-tight">How to Play</h2>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <p>• Draw a single continuous loop by connecting dots</p>
@@ -1050,7 +1050,7 @@ export default function SlitherlinkSolver() {
             {/* Developer Contact Section */}
             <Card className="bg-gray-100 border-gray-200">
               <CardHeader>
-                <h2 className="text-lg font-semibold leading-none tracking-tight text-center">About the Developer</h2>
+                <h2 className="text-lg font-semibold tracking-tight text-center">About the Developer</h2>
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <p className="text-gray-600">
