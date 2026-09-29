@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useRef, useState } from "react"
 import { Coffee } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,11 +10,25 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { SITE } from "@/data/site"
+import { solveSlitherlink, type EdgeState } from "./slitherlink-solver"
 
 type Grid = (number | string | null)[][]
-type EdgeState = "empty" | "line" | "cross"
 type HorizontalEdges = EdgeState[][]
 type VerticalEdges = EdgeState[][]
+
+/** The solver lists at most this many solutions. */
+const MAX_SOLUTIONS = 20
+
+// Board geometry in SVG units. Dots sit PAD + i × PITCH from the top-left corner. Around every
+// edge there is a 2 × BAND strip that toggles it; the square left inside each cell holds the clue
+// input. The board never shrinks below MIN_SCALE, so both stay at least 24 CSS px on phones.
+const PITCH = 60
+const PAD = 15
+const BAND = 15
+const MIN_SCALE = 0.8
+const dot = (i: number) => PAD + i * PITCH
+
+const EDGE_STATE_NAMES: Record<EdgeState, string> = { empty: "empty", line: "line", cross: "cross" }
 
 const DEFAULT_GRID_SIZE = 5
 
@@ -35,28 +49,18 @@ export default function SlitherlinkSolver() {
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [solutionCount, setSolutionCount] = useState(0)
+  const [solutionsCapped, setSolutionsCapped] = useState(false)
   const [currentExample, setCurrentExample] = useState(0)
   const [allSolutions, setAllSolutions] = useState<{ horizontal: HorizontalEdges; vertical: VerticalEdges }[]>([])
   const [currentSolutionIndex, setCurrentSolutionIndex] = useState(0)
   const [showAllSolutions, setShowAllSolutions] = useState(false)
-  const [solveTimeout, setSolveTimeout] = useState<NodeJS.Timeout | null>(null)
-  const [isComplexPuzzle, setIsComplexPuzzle] = useState(false)
   const [showComplexPuzzleDialog, setShowComplexPuzzleDialog] = useState(false)
-  const [wasExampleLoaded, setWasExampleLoaded] = useState(false)
   const [notification, setNotification] = useState<{
     type: "success" | "error" | "warning" | "info"
     title: string
     message: string
   } | null>(null)
-
-  // Cleanup timeouts on unmount to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      if (solveTimeout) {
-        clearTimeout(solveTimeout)
-      }
-    }
-  }, [solveTimeout])
+  const notificationTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Clear the edges (lines and crosses) but keep the clues
   const clearEdges = (size: number = gridSize) => {
@@ -71,262 +75,64 @@ export default function SlitherlinkSolver() {
     clearEdges(size)
   }
 
-  // Count edges around a cell
-  const countEdgesAroundCell = (row: number, col: number): number => {
-    let count = 0
-
-    // Top edge
-    if (horizontalEdges[row][col] === "line") count++
-    // Bottom edge
-    if (horizontalEdges[row + 1][col] === "line") count++
-    // Left edge
-    if (verticalEdges[row][col] === "line") count++
-    // Right edge
-    if (verticalEdges[row][col + 1] === "line") count++
-
-    return count
-  }
-
-  // Validate current state
-  const isValidState = (): boolean => {
-    // Check number constraints
-    for (let row = 0; row < gridSize; row++) {
-      for (let col = 0; col < gridSize; col++) {
-        const clue = grid[row][col]
-        if (typeof clue === "number") {
-          const edgeCount = countEdgesAroundCell(row, col)
-          if (edgeCount > clue) return false
-        }
-      }
-    }
-    return true
-  }
-
-  // True when the line edges form exactly one closed loop and every number clue is satisfied.
-  const isCompleteLoop = (h: HorizontalEdges, v: VerticalEdges): boolean => {
-    const n = gridSize
-    for (let row = 0; row < n; row++) {
-      for (let col = 0; col < n; col++) {
-        const clue = grid[row][col]
-        if (typeof clue === "number" && countEdgesAroundCellInState(h, v, row, col) !== clue) return false
-      }
-    }
-    // Dots are (n + 1) × (n + 1); list the dots joined to (r, c) by a line
-    const neighbours = (r: number, c: number): [number, number][] => {
-      const out: [number, number][] = []
-      if (c > 0 && h[r][c - 1] === "line") out.push([r, c - 1])
-      if (c < n && h[r][c] === "line") out.push([r, c + 1])
-      if (r > 0 && v[r - 1][c] === "line") out.push([r - 1, c])
-      if (r < n && v[r][c] === "line") out.push([r + 1, c])
-      return out
-    }
-    let start: [number, number] | null = null
-    let lineCount = 0
-    for (let r = 0; r <= n; r++) {
-      for (let c = 0; c <= n; c++) {
-        const degree = neighbours(r, c).length
-        if (degree !== 0 && degree !== 2) return false
-        if (degree === 2 && !start) start = [r, c]
-        lineCount += degree
-      }
-    }
-    lineCount /= 2
-    if (!start) return false
-    // Walk the loop once; a single loop visits every line edge.
-    let prev: [number, number] | null = null
-    let cur: [number, number] = start
-    let steps = 0
-    do {
-      const next: [number, number] | undefined = neighbours(cur[0], cur[1]).find(
-        ([r, c]) => !prev || r !== prev[0] || c !== prev[1],
-      )
-      if (!next) return false
-      prev = cur
-      cur = next
-      steps++
-    } while ((cur[0] !== start[0] || cur[1] !== start[1]) && steps <= lineCount)
-    return steps === lineCount
-  }
-
-  // Solver: applies the deductions that follow directly from the clues, then checks whether
-  // that already completes the loop. Only a complete loop is reported as solved.
-  const solvePuzzle = async (): Promise<boolean> => {
+  // Solve: a backtracking search for single closed loops that satisfy every clue. Lines and
+  // crosses already drawn are kept. Deferred a tick so the "Solving..." state can paint first.
+  const solvePuzzle = () => {
     setIsLoading(true)
     setSolutionCount(0)
+    setSolutionsCapped(false)
     setAllSolutions([])
-    setIsComplexPuzzle(false)
+    setCurrentSolutionIndex(0)
     setShowAllSolutions(false)
 
-    const timeoutDuration = 15000 // 15 seconds timeout
-    let timeoutId: ReturnType<typeof setTimeout> | undefined
-    let isSolved = false
+    setTimeout(() => {
+      try {
+        const drewEdges = [...horizontalEdges.flat(), ...verticalEdges.flat()].some((edge) => edge !== "empty")
+        const result = solveSlitherlink(
+          { size: gridSize, clues: grid, horizontal: horizontalEdges, vertical: verticalEdges },
+          MAX_SOLUTIONS,
+        )
+        const found = result.solutions
 
-    try {
-      // Set up timeout
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => {
-          setIsComplexPuzzle(true)
-          setShowComplexPuzzleDialog(true)
-          reject(new Error("Timeout"))
-        }, timeoutDuration)
-        setSolveTimeout(timeoutId)
-      })
-
-      const solvePromise = new Promise<void>((resolve) => {
-        const [result] = solveSlitherlink()
-        const before = [...horizontalEdges.flat(), ...verticalEdges.flat()]
-        const after = [...result.horizontal.flat(), ...result.vertical.flat()]
-        const deduced = after.filter((edge, i) => edge !== before[i]).length
-
-        setHorizontalEdges(result.horizontal)
-        setVerticalEdges(result.vertical)
-
-        if (isCompleteLoop(result.horizontal, result.vertical)) {
-          isSolved = true
-          setAllSolutions([result])
-          setSolutionCount(1)
+        if (found.length > 0) {
+          const more = result.capped || result.stopped
+          setAllSolutions(found)
+          setSolutionCount(found.length)
+          setSolutionsCapped(more)
+          setHorizontalEdges(found[0].horizontal)
+          setVerticalEdges(found[0].vertical)
           setSolved(true)
-        } else {
-          setSolved(false)
-          if (deduced > 0) {
-            showNotification(
-              "info",
-              "Partial result",
-              `Filled in ${deduced} edge${deduced === 1 ? "" : "s"} that follow directly from the clues. The rest of the loop is still open.`,
-            )
+          if (found.length === 1 && !more) {
+            showNotification("success", "Puzzle Solved!", "Found the loop. It is the only one that fits these clues.")
           } else {
             showNotification(
-              "info",
-              "No direct deductions",
-              "No edges follow directly from these clues (0s and 4s help most). Draw some lines yourself or add more clues.",
+              "success",
+              "Multiple Solutions Found!",
+              more
+                ? `Found ${found.length}+ loops that fit these clues (showing the first ${found.length}). Add clues to narrow it down.`
+                : `Found ${found.length} loops that fit these clues. Add clues to narrow it down.`,
             )
           }
+        } else if (result.stopped) {
+          setSolved(false)
+          setShowComplexPuzzleDialog(true)
+        } else {
+          setSolved(false)
+          showNotification(
+            "error",
+            "No Solution",
+            drewEdges
+              ? "No single loop fits these clues together with the lines and crosses you drew. Check them, or clear the drawn edges and try again."
+              : "No single loop fits these clues. Please check them.",
+          )
         }
-
-        resolve()
-      })
-
-      await Promise.race([solvePromise, timeoutPromise])
-    } catch (error) {
-      console.warn("Solver timeout or error:", error)
-
-      if (!(error instanceof Error && error.message === "Timeout") && !wasExampleLoaded) {
+      } catch (error) {
+        console.error("Solver error:", error)
         showNotification("error", "Solver Error", "An error occurred while solving the puzzle. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
-    } finally {
-      // Always cancel the timer; otherwise the "Complex Puzzle" dialog pops up 15s after every solve.
-      clearTimeout(timeoutId)
-      setSolveTimeout(null)
-      setIsLoading(false)
-    }
-
-    return isSolved
-  }
-
-  // Simple backtracking solver
-  const solveSlitherlink = (): { horizontal: HorizontalEdges; vertical: VerticalEdges }[] => {
-    const solutions: { horizontal: HorizontalEdges; vertical: VerticalEdges }[] = []
-
-    // Create working copies
-    const workingHorizontal = horizontalEdges.map((row) => [...row])
-    const workingVertical = verticalEdges.map((row) => [...row])
-
-    // Simple constraint propagation
-    let changed = true
-    while (changed) {
-      changed = false
-
-      for (let row = 0; row < gridSize; row++) {
-        for (let col = 0; col < gridSize; col++) {
-          const clue = grid[row][col]
-          if (typeof clue === "number") {
-            const currentCount = countEdgesAroundCellInState(workingHorizontal, workingVertical, row, col)
-            const possibleCount = countPossibleEdgesAroundCell(workingHorizontal, workingVertical, row, col)
-
-            // If we've reached the required number, mark remaining as crosses
-            if (currentCount === clue) {
-              if (markRemainingAsCross(workingHorizontal, workingVertical, row, col)) {
-                changed = true
-              }
-            }
-            // If we need all remaining edges, mark them as lines
-            else if (currentCount + possibleCount === clue) {
-              if (markRemainingAsLine(workingHorizontal, workingVertical, row, col)) {
-                changed = true
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // For now, return the constraint-propagated solution
-    solutions.push({
-      horizontal: workingHorizontal,
-      vertical: workingVertical,
-    })
-
-    return solutions
-  }
-
-  const countEdgesAroundCellInState = (h: HorizontalEdges, v: VerticalEdges, row: number, col: number): number => {
-    let count = 0
-    if (h[row][col] === "line") count++
-    if (h[row + 1][col] === "line") count++
-    if (v[row][col] === "line") count++
-    if (v[row][col + 1] === "line") count++
-    return count
-  }
-
-  const countPossibleEdgesAroundCell = (h: HorizontalEdges, v: VerticalEdges, row: number, col: number): number => {
-    let count = 0
-    if (h[row][col] === "empty") count++
-    if (h[row + 1][col] === "empty") count++
-    if (v[row][col] === "empty") count++
-    if (v[row][col + 1] === "empty") count++
-    return count
-  }
-
-  const markRemainingAsCross = (h: HorizontalEdges, v: VerticalEdges, row: number, col: number): boolean => {
-    let changed = false
-    if (h[row][col] === "empty") {
-      h[row][col] = "cross"
-      changed = true
-    }
-    if (h[row + 1][col] === "empty") {
-      h[row + 1][col] = "cross"
-      changed = true
-    }
-    if (v[row][col] === "empty") {
-      v[row][col] = "cross"
-      changed = true
-    }
-    if (v[row][col + 1] === "empty") {
-      v[row][col + 1] = "cross"
-      changed = true
-    }
-    return changed
-  }
-
-  const markRemainingAsLine = (h: HorizontalEdges, v: VerticalEdges, row: number, col: number): boolean => {
-    let changed = false
-    if (h[row][col] === "empty") {
-      h[row][col] = "line"
-      changed = true
-    }
-    if (h[row + 1][col] === "empty") {
-      h[row + 1][col] = "line"
-      changed = true
-    }
-    if (v[row][col] === "empty") {
-      v[row][col] = "line"
-      changed = true
-    }
-    if (v[row][col + 1] === "empty") {
-      v[row][col + 1] = "line"
-      changed = true
-    }
-    return changed
+    }, 20)
   }
 
   // Handle grid cell changes
@@ -378,31 +184,28 @@ export default function SlitherlinkSolver() {
     setCurrentSolutionIndex(0)
     setShowAllSolutions(false)
     setSolutionCount(0)
-    setIsComplexPuzzle(false)
-    setWasExampleLoaded(false)
+    setSolutionsCapped(false)
     setNotification(null)
-    if (solveTimeout) {
-      clearTimeout(solveTimeout)
-      setSolveTimeout(null)
-    }
   }
 
   // Add a showNotification helper function
   const showNotification = (type: "success" | "error" | "warning" | "info", title: string, message: string) => {
     setNotification({ type, title, message })
-    setTimeout(() => setNotification(null), 5000)
+    // One timer at a time, so an older toast's timer cannot hide a newer toast early.
+    if (notificationTimer.current) clearTimeout(notificationTimer.current)
+    notificationTimer.current = setTimeout(() => setNotification(null), 5000)
   }
 
-  // Enhanced example puzzles
+  // Example puzzles. Each has exactly one solution (checked with the solver).
   const getExamplePuzzles = () => {
     const examples = {
       4: [
         {
           grid: [
-            [null, 2, null, null],
-            [3, null, 1, null],
-            [null, 2, null, 3],
-            [null, null, 2, null],
+            [0, 2, 3, null],
+            [1, null, null, 2],
+            [null, null, 2, 1],
+            [null, null, null, 3],
           ],
           name: "Easy 4x4",
         },
@@ -410,21 +213,21 @@ export default function SlitherlinkSolver() {
       5: [
         {
           grid: [
-            [null, 2, null, 3, null],
-            [1, null, null, null, 2],
-            [null, null, 2, null, null],
-            [3, null, null, null, 1],
-            [null, 1, null, 2, null],
+            [null, 1, 1, 0, 0],
+            [3, null, null, 2, null],
+            [3, null, null, null, null],
+            [2, null, null, 3, 0],
+            [2, null, null, 3, 1],
           ],
           name: "Classic 5x5",
         },
         {
           grid: [
-            [2, null, 3, null, 1],
-            [null, 1, null, 2, null],
-            [3, null, null, null, 3],
-            [null, 2, null, 1, null],
-            [1, null, 2, null, 2],
+            [null, 0, 2, null, null],
+            [0, 1, null, null, 3],
+            [null, 0, null, null, null],
+            [null, null, null, 1, 3],
+            [1, null, null, null, 2],
           ],
           name: "Medium 5x5",
         },
@@ -432,12 +235,12 @@ export default function SlitherlinkSolver() {
       6: [
         {
           grid: [
-            [null, 1, null, 2, null, null],
-            [2, null, 3, null, 1, null],
-            [null, null, null, null, null, 2],
-            [1, null, null, null, null, null],
-            [null, 2, null, 3, null, 1],
-            [null, null, 1, null, 2, null],
+            [1, null, 3, null, null, null],
+            [2, 1, null, 1, null, null],
+            [null, null, 1, 1, 0, 0],
+            [null, null, null, null, null, 0],
+            [1, null, null, 2, 2, null],
+            [2, null, 1, null, null, 1],
           ],
           name: "Easy 6x6",
         },
@@ -454,15 +257,13 @@ export default function SlitherlinkSolver() {
       clearEdges() // Reset edges only; the example's clues must survive
       setSolved(false)
       setSolutionCount(0)
-      setWasExampleLoaded(true)
+      setSolutionsCapped(false)
+      setAllSolutions([])
+      setShowAllSolutions(false)
 
       setTimeout(() => {
         showNotification("success", "Example Loaded", `Successfully loaded: ${example.name}`)
       }, 100)
-
-      setTimeout(() => {
-        setWasExampleLoaded(false)
-      }, 2000)
     }
   }
 
@@ -514,11 +315,79 @@ export default function SlitherlinkSolver() {
     }
   }
 
-  // Board geometry (SVG units). The SVG scales down to fit narrow screens; the clue inputs sit in
-  // an HTML layer on top, positioned in percentages so they scale with it. (Inputs inside a scaled
-  // SVG <foreignObject> are mis-positioned in WebKit, so they are not placed there.)
-  const boardSize = gridSize * 60 + 20
+  // Board geometry (SVG units). The SVG only draws the board and scales down to fit narrow
+  // screens. The edge buttons and clue inputs sit in an HTML layer on top, positioned in
+  // percentages so they scale with it. (Inputs inside a scaled SVG <foreignObject> are
+  // mis-positioned in WebKit, so they are not placed there.)
+  const boardSize = gridSize * PITCH + 2 * PAD
   const pct = (units: number) => `${(units / boardSize) * 100}%`
+
+  // Spoken names, e.g. "Top edge of row 1, column 2: line" or "Right edge of row 3, column 5: empty"
+  const horizontalEdgeLabel = (row: number, col: number, edge: EdgeState) =>
+    row < gridSize
+      ? `Top edge of row ${row + 1}, column ${col + 1}: ${EDGE_STATE_NAMES[edge]}`
+      : `Bottom edge of row ${gridSize}, column ${col + 1}: ${EDGE_STATE_NAMES[edge]}`
+  const verticalEdgeLabel = (row: number, col: number, edge: EdgeState) =>
+    col < gridSize
+      ? `Left edge of row ${row + 1}, column ${col + 1}: ${EDGE_STATE_NAMES[edge]}`
+      : `Right edge of row ${row + 1}, column ${gridSize}: ${EDGE_STATE_NAMES[edge]}`
+
+  const edgeButtonClass =
+    "absolute z-10 cursor-pointer rounded-sm bg-transparent hover:bg-teal-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+
+  const horizontalEdgeButton = (row: number, col: number) => (
+    <button
+      key={`hb-${row}-${col}`}
+      type="button"
+      aria-label={horizontalEdgeLabel(row, col, horizontalEdges[row][col])}
+      onClick={() => toggleHorizontalEdge(row, col)}
+      className={edgeButtonClass}
+      style={{ left: pct(dot(col) + BAND), top: pct(dot(row) - BAND), width: pct(PITCH - 2 * BAND), height: pct(2 * BAND) }}
+    />
+  )
+
+  const verticalEdgeButton = (row: number, col: number) => (
+    <button
+      key={`vb-${row}-${col}`}
+      type="button"
+      aria-label={verticalEdgeLabel(row, col, verticalEdges[row][col])}
+      onClick={() => toggleVerticalEdge(row, col)}
+      className={edgeButtonClass}
+      style={{ left: pct(dot(col) - BAND), top: pct(dot(row) + BAND), width: pct(2 * BAND), height: pct(PITCH - 2 * BAND) }}
+    />
+  )
+
+  const clueInput = (row: number, col: number) => (
+    <Input
+      key={`in-${row}-${col}`}
+      type="text"
+      aria-label={`Row ${row + 1}, column ${col + 1} clue`}
+      value={grid[row][col] ?? ""}
+      onChange={(e) => updateGridCell(row, col, e.target.value)}
+      className="absolute rounded-none p-0 text-center font-bold border-0 bg-transparent text-transparent focus:text-black focus:bg-white"
+      maxLength={1}
+      style={{
+        left: pct(dot(col) + BAND),
+        top: pct(dot(row) + BAND),
+        width: pct(PITCH - 2 * BAND),
+        height: pct(PITCH - 2 * BAND),
+        caretColor: "black",
+      }}
+    />
+  )
+
+  // Controls in reading order, so Tab moves across each row: the row's top edges, then for each
+  // cell its left edge and clue, then the row's right edge; the bottom edges come last.
+  const boardControls: React.ReactNode[] = []
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) boardControls.push(horizontalEdgeButton(row, col))
+    for (let col = 0; col < gridSize; col++) {
+      boardControls.push(verticalEdgeButton(row, col))
+      boardControls.push(clueInput(row, col))
+    }
+    boardControls.push(verticalEdgeButton(row, gridSize))
+  }
+  for (let col = 0; col < gridSize; col++) boardControls.push(horizontalEdgeButton(gridSize, col))
 
   return (
     <div className="min-h-screen bg-gray-50 px-2 py-4 sm:p-4">
@@ -603,10 +472,11 @@ export default function SlitherlinkSolver() {
               </Button>
             </div>
 
-            {/* Notification Toast */}
+            {/* Notification Toast. The wrapper is always mounted so screen readers announce each result. */}
+            <div role="status" aria-live="polite" className="fixed top-4 left-4 right-4 z-50 sm:left-auto sm:max-w-md">
             {notification && (
               <div
-                className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-lg shadow-lg border-l-4 ${(() => {
+                className={`p-4 rounded-lg shadow-lg border-l-4 ${(() => {
                   switch (notification.type) {
                     case "success":
                       return "bg-green-50 border-green-400 text-green-800"
@@ -641,6 +511,7 @@ export default function SlitherlinkSolver() {
                 </div>
               </div>
             )}
+            </div>
 
             {/* Enhanced Status Section */}
             {solved && (
@@ -652,7 +523,8 @@ export default function SlitherlinkSolver() {
                 {solutionCount > 1 && (
                   <div className="space-y-3">
                     <Badge variant="secondary" className="text-sm px-3 py-1">
-                      🔢 {solutionCount} solution{solutionCount > 1 ? "s" : ""} found
+                      🔢 {solutionCount}
+                      {solutionsCapped ? "+" : ""} solution{solutionCount > 1 ? "s" : ""} found
                     </Badge>
 
                     {solutionCount >= 13 && (
@@ -682,6 +554,7 @@ export default function SlitherlinkSolver() {
                         </Button>
                         <span className="text-sm px-3 py-1 bg-gray-100 rounded">
                           Solution {currentSolutionIndex + 1} of {solutionCount}
+                          {solutionsCapped ? "+" : ""}
                         </span>
                         <Button
                           onClick={nextSolution}
@@ -702,17 +575,25 @@ export default function SlitherlinkSolver() {
             {/* Complex Puzzle Dialog */}
             {showComplexPuzzleDialog && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full mx-4 shadow-xl">
+                <div
+                  role="dialog"
+                  aria-labelledby="complex-puzzle-title"
+                  className="bg-white rounded-lg max-w-md w-full mx-4 shadow-xl"
+                >
                   <div className="p-6">
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
                         <span className="text-yellow-600 text-xl">⏱️</span>
                       </div>
-                      <h2 className="text-lg font-semibold text-gray-900">Complex Puzzle Detected</h2>
+                      <h2 id="complex-puzzle-title" className="text-lg font-semibold text-gray-900">
+                        Complex Puzzle Detected
+                      </h2>
                     </div>
 
                     <div className="space-y-4 text-sm text-gray-600">
-                      <p className="font-medium text-gray-800">This puzzle is taking longer than expected to solve.</p>
+                      <p className="font-medium text-gray-800">
+                        The solver stopped after a few seconds without finding a loop.
+                      </p>
 
                       <div className="space-y-2">
                         <p>
@@ -721,8 +602,7 @@ export default function SlitherlinkSolver() {
                         <ul className="list-disc list-inside space-y-1 ml-4">
                           <li>The puzzle has too many possible solutions (under-constrained)</li>
                           <li>Some clues may be incorrect or contradictory</li>
-                          <li>The puzzle requires advanced loop-finding techniques</li>
-                          <li>The grid size makes it computationally intensive</li>
+                          <li>The grid size makes the search too long</li>
                         </ul>
                       </div>
 
@@ -741,19 +621,16 @@ export default function SlitherlinkSolver() {
 
                     <div className="flex gap-3 mt-6">
                       <Button
-                        onClick={() => {
-                          setShowComplexPuzzleDialog(false)
-                          setIsComplexPuzzle(false)
-                        }}
+                        onClick={() => setShowComplexPuzzleDialog(false)}
                         variant="outline"
                         className="flex-1"
+                        autoFocus
                       >
                         Close
                       </Button>
                       <Button
                         onClick={() => {
                           setShowComplexPuzzleDialog(false)
-                          setIsComplexPuzzle(false)
                           loadExample()
                         }}
                         className="flex-1 bg-green-600 hover:bg-green-700"
@@ -768,142 +645,37 @@ export default function SlitherlinkSolver() {
 
             <Separator />
 
-            {/* Puzzle Grid */}
-            <div className="flex justify-center">
-              <div className="relative w-full border border-gray-300" style={{ maxWidth: boardSize + 2 }}>
+            {/* Puzzle Grid. Scrolls inside this box (from the first column) if a screen is too narrow
+                for the smallest board scale. */}
+            <div className="overflow-x-auto py-1">
+              <div
+                className="relative mx-auto w-full border border-gray-300"
+                style={{ maxWidth: boardSize + 2, minWidth: Math.ceil(boardSize * MIN_SCALE) + 2 }}
+              >
                 <svg
                   viewBox={`0 0 ${boardSize} ${boardSize}`}
                   width={boardSize}
                   height={boardSize}
                   className="block h-auto w-full"
+                  aria-hidden="true"
+                  focusable="false"
                 >
-                  {/* Grid dots */}
-                  {Array.from({ length: gridSize + 1 }).map((_, row) =>
-                    Array.from({ length: gridSize + 1 }).map((_, col) => (
-                      <circle key={`dot-${row}-${col}`} cx={10 + col * 60} cy={10 + row * 60} r="3" fill="#666" />
-                    )),
-                  )}
-
-                  {/* Horizontal edges */}
-                  {horizontalEdges.map((row, rowIndex) =>
-                    row.map((edge, colIndex) => (
-                      <g key={`h-${rowIndex}-${colIndex}`}>
-                        <line
-                          x1={16 + colIndex * 60}
-                          y1={10 + rowIndex * 60}
-                          x2={4 + (colIndex + 1) * 60}
-                          y2={10 + rowIndex * 60}
-                          stroke={edge === "line" ? "#000" : "transparent"}
-                          strokeWidth="3"
-                          className="cursor-pointer"
-                          onClick={() => toggleHorizontalEdge(rowIndex, colIndex)}
-                        />
-                        {edge === "cross" && (
-                          <>
-                            <line
-                              x1={25 + colIndex * 60}
-                              y1={5 + rowIndex * 60}
-                              x2={35 + colIndex * 60}
-                              y2={15 + rowIndex * 60}
-                              stroke="#999"
-                              strokeWidth="2"
-                              className="cursor-pointer"
-                              onClick={() => toggleHorizontalEdge(rowIndex, colIndex)}
-                            />
-                            <line
-                              x1={35 + colIndex * 60}
-                              y1={5 + rowIndex * 60}
-                              x2={25 + colIndex * 60}
-                              y2={15 + rowIndex * 60}
-                              stroke="#999"
-                              strokeWidth="2"
-                              className="cursor-pointer"
-                              onClick={() => toggleHorizontalEdge(rowIndex, colIndex)}
-                            />
-                          </>
-                        )}
-                        {/* Invisible clickable area */}
-                        <rect
-                          x={16 + colIndex * 60}
-                          y={5 + rowIndex * 60}
-                          width={44}
-                          height={10}
-                          fill="transparent"
-                          className="cursor-pointer"
-                          onClick={() => toggleHorizontalEdge(rowIndex, colIndex)}
-                        />
-                      </g>
-                    )),
-                  )}
-
-                  {/* Vertical edges */}
-                  {verticalEdges.map((row, rowIndex) =>
-                    row.map((edge, colIndex) => (
-                      <g key={`v-${rowIndex}-${colIndex}`}>
-                        <line
-                          x1={10 + colIndex * 60}
-                          y1={16 + rowIndex * 60}
-                          x2={10 + colIndex * 60}
-                          y2={4 + (rowIndex + 1) * 60}
-                          stroke={edge === "line" ? "#000" : "transparent"}
-                          strokeWidth="3"
-                          className="cursor-pointer"
-                          onClick={() => toggleVerticalEdge(rowIndex, colIndex)}
-                        />
-                        {edge === "cross" && (
-                          <>
-                            <line
-                              x1={5 + colIndex * 60}
-                              y1={25 + rowIndex * 60}
-                              x2={15 + colIndex * 60}
-                              y2={35 + rowIndex * 60}
-                              stroke="#999"
-                              strokeWidth="2"
-                              className="cursor-pointer"
-                              onClick={() => toggleVerticalEdge(rowIndex, colIndex)}
-                            />
-                            <line
-                              x1={15 + colIndex * 60}
-                              y1={25 + rowIndex * 60}
-                              x2={5 + colIndex * 60}
-                              y2={35 + rowIndex * 60}
-                              stroke="#999"
-                              strokeWidth="2"
-                              className="cursor-pointer"
-                              onClick={() => toggleVerticalEdge(rowIndex, colIndex)}
-                            />
-                          </>
-                        )}
-                        {/* Invisible clickable area */}
-                        <rect
-                          x={5 + colIndex * 60}
-                          y={16 + rowIndex * 60}
-                          width={10}
-                          height={44}
-                          fill="transparent"
-                          className="cursor-pointer"
-                          onClick={() => toggleVerticalEdge(rowIndex, colIndex)}
-                        />
-                      </g>
-                    )),
-                  )}
-
-                  {/* Cell clues */}
+                  {/* Cell backgrounds and clues */}
                   {grid.map((row, rowIndex) =>
                     row.map((cell, colIndex) => (
                       <g key={`cell-${rowIndex}-${colIndex}`}>
                         <rect
-                          x={16 + colIndex * 60}
-                          y={16 + rowIndex * 60}
-                          width={44}
-                          height={44}
+                          x={dot(colIndex) + 8}
+                          y={dot(rowIndex) + 8}
+                          width={PITCH - 16}
+                          height={PITCH - 16}
                           fill="white"
                           stroke="none"
                         />
                         {cell !== null && (
                           <text
-                            x={38 + colIndex * 60}
-                            y={42 + rowIndex * 60}
+                            x={dot(colIndex) + PITCH / 2}
+                            y={dot(rowIndex) + PITCH / 2 + 1}
                             textAnchor="middle"
                             dominantBaseline="middle"
                             fontSize="20"
@@ -916,29 +688,53 @@ export default function SlitherlinkSolver() {
                       </g>
                     )),
                   )}
+
+                  {/* Horizontal edges */}
+                  {horizontalEdges.map((row, rowIndex) =>
+                    row.map((edge, colIndex) => {
+                      const x = dot(colIndex) + PITCH / 2
+                      const y = dot(rowIndex)
+                      return (
+                        <g key={`h-${rowIndex}-${colIndex}`}>
+                          {edge === "line" && (
+                            <line x1={dot(colIndex) + 6} y1={y} x2={dot(colIndex + 1) - 6} y2={y} stroke="#000" strokeWidth="3" />
+                          )}
+                          {edge === "cross" && (
+                            <path d={`M${x - 5} ${y - 5}L${x + 5} ${y + 5}M${x + 5} ${y - 5}L${x - 5} ${y + 5}`} stroke="#999" strokeWidth="2" />
+                          )}
+                        </g>
+                      )
+                    }),
+                  )}
+
+                  {/* Vertical edges */}
+                  {verticalEdges.map((row, rowIndex) =>
+                    row.map((edge, colIndex) => {
+                      const x = dot(colIndex)
+                      const y = dot(rowIndex) + PITCH / 2
+                      return (
+                        <g key={`v-${rowIndex}-${colIndex}`}>
+                          {edge === "line" && (
+                            <line x1={x} y1={dot(rowIndex) + 6} x2={x} y2={dot(rowIndex + 1) - 6} stroke="#000" strokeWidth="3" />
+                          )}
+                          {edge === "cross" && (
+                            <path d={`M${x - 5} ${y - 5}L${x + 5} ${y + 5}M${x + 5} ${y - 5}L${x - 5} ${y + 5}`} stroke="#999" strokeWidth="2" />
+                          )}
+                        </g>
+                      )
+                    }),
+                  )}
+
+                  {/* Grid dots */}
+                  {Array.from({ length: gridSize + 1 }).map((_, row) =>
+                    Array.from({ length: gridSize + 1 }).map((_, col) => (
+                      <circle key={`dot-${row}-${col}`} cx={dot(col)} cy={dot(row)} r="3" fill="#666" />
+                    )),
+                  )}
                 </svg>
 
-                {/* Clue inputs, laid over the cells */}
-                {grid.map((row, rowIndex) =>
-                  row.map((cell, colIndex) => (
-                    <Input
-                      key={`in-${rowIndex}-${colIndex}`}
-                      type="text"
-                      aria-label={`Row ${rowIndex + 1}, column ${colIndex + 1} clue`}
-                      value={cell ?? ""}
-                      onChange={(e) => updateGridCell(rowIndex, colIndex, e.target.value)}
-                      className="absolute rounded-none p-0 text-center font-bold border-0 bg-transparent text-transparent focus:text-black focus:bg-white"
-                      maxLength={1}
-                      style={{
-                        left: pct(16 + colIndex * 60),
-                        top: pct(16 + rowIndex * 60),
-                        width: pct(44),
-                        height: pct(44),
-                        caretColor: "black",
-                      }}
-                    />
-                  )),
-                )}
+                {/* Edge buttons and clue inputs, laid over the board */}
+                {boardControls}
               </div>
             </div>
 
@@ -947,7 +743,7 @@ export default function SlitherlinkSolver() {
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader>
                   <h2 className="text-lg font-semibold tracking-tight text-blue-800 flex items-center gap-2">
-                    🔢 All {solutionCount} Solutions
+                    🔢 {solutionsCapped ? `First ${solutionCount}` : `All ${solutionCount}`} Solutions
                   </h2>
                 </CardHeader>
                 <CardContent>
@@ -1042,7 +838,8 @@ export default function SlitherlinkSolver() {
                   <p>• Lines are part of the loop, crosses mark edges that are NOT part of the loop</p>
                   <p>• Enter numbers (0-4) for clues, 's' for inside loop, 'w' for outside loop</p>
                   <p>• The loop must be continuous with no branches or isolated segments</p>
-                  <p>• Click &quot;Solve Puzzle&quot; to fill in the edges that follow directly from the clues</p>
+                  <p>• Click &quot;Solve Puzzle&quot; to find the loop. Lines and crosses you have drawn are kept</p>
+                  <p>• Keyboard: Tab to an edge and press Enter or Space to change it</p>
                 </CardContent>
               </Card>
             )}

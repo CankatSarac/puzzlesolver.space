@@ -6,7 +6,7 @@ import SlitherlinkSolver from "@/solvers/slitherlink/SlitherlinkSolver";
 
 const title = "Slitherlink Puzzle Solver — Free Online Loop Puzzle Solver";
 const description =
-  "Free online Slitherlink (loop) puzzle helper. Enter the number clues, draw lines and crosses on an interactive grid, and let the solver fill in the edges that follow directly from the clues.";
+  "Solve Slitherlink (loop) puzzles instantly. Enter the number clues and the solver draws the single closed loop that satisfies every cell, with multi-solution browsing.";
 
 export const metadata = pageMetadata({ path: "/slitherlink", title, description });
 
