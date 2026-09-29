@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { Coffee, Github, Linkedin, Twitter } from "lucide-react";
+import Link from "next/link";
+import { Coffee, Github, Linkedin } from "lucide-react";
 import { SITE } from "@/data/site";
 
 export function Footer() {
@@ -8,10 +9,12 @@ export function Footer() {
     <footer className="mt-12 border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-5 py-10 sm:flex-row sm:justify-between">
         <div className="text-center sm:text-left">
-          <a href="#top" className="inline-flex items-center gap-2 font-display text-lg font-bold text-ink">
+          <Link href="/" className="inline-flex items-center gap-2 font-display text-lg font-bold text-ink">
             <Image src="/logo.png" alt="PuzzleSolver logo" width={28} height={28} className="h-7 w-7 rounded-md" />
-            Puzzle<span className="text-rose-500">Solver</span>
-          </a>
+            <span>
+              Puzzle<span className="text-rose-500">Solver</span>
+            </span>
+          </Link>
           <p className="mt-1 text-sm text-subtle">
             Built by{" "}
             <a
@@ -33,9 +36,6 @@ export function Footer() {
           <FooterIcon href={SITE.links.linkedin} label="LinkedIn">
             <Linkedin size={18} />
           </FooterIcon>
-          <FooterIcon href={SITE.links.twitter} label="X / Twitter">
-            <Twitter size={18} />
-          </FooterIcon>
           <FooterIcon href={SITE.links.buyMeACoffee} label="Buy me a coffee">
             <Coffee size={18} />
           </FooterIcon>
@@ -44,12 +44,15 @@ export function Footer() {
 
       <div className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-x-5 gap-y-2 px-5 py-4 text-sm text-subtle sm:justify-end">
-          <a href={SITE.links.privacy} className="hover:text-ink">
+          <Link href="/#solvers" className="hover:text-ink">
+            All solvers
+          </Link>
+          <Link href={SITE.links.privacy} className="hover:text-ink">
             Privacy
-          </a>
-          <a href={SITE.links.terms} className="hover:text-ink">
+          </Link>
+          <Link href={SITE.links.terms} className="hover:text-ink">
             Terms
-          </a>
+          </Link>
         </div>
       </div>
     </footer>

@@ -1,22 +1,24 @@
-import type { Metadata } from "next";
+import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { JsonLd } from "@/components/JsonLd";
+import { pageMetadata, solverJsonLd } from "@/lib/seo";
 import TangoSolver from "@/solvers/tango/TangoSolver";
 
-export const metadata: Metadata = {
-  title: "Tango Puzzle Solver — Free Online LinkedIn Tango Solver",
-  description:
-    "Solve LinkedIn's Tango puzzle instantly. Fill the grid with suns and moons under the balance, no-three-in-a-row, and =/≠ constraints — all solutions found automatically.",
-  alternates: { canonical: "/tango" },
-};
+const title = "Tango Puzzle Solver — Free Online LinkedIn Tango Solver";
+const description =
+  "Solve LinkedIn's Tango puzzle instantly. Fill the grid with suns and moons under the balance, no-three-in-a-row, and =/≠ constraints — solved automatically in your browser.";
+
+export const metadata = pageMetadata({ path: "/tango", title, description });
 
 export default function TangoPage() {
   return (
     <>
+      <JsonLd data={solverJsonLd("tango", description)} />
       <Header />
       <main>
-        <h1 className="sr-only">Tango Puzzle Solver</h1>
         <TangoSolver />
       </main>
+      <Footer />
     </>
   );
 }

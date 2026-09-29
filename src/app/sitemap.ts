@@ -17,5 +17,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       });
     }
   }
+  for (const path of [SITE.links.privacy, SITE.links.terms]) {
+    routes.push({ url: `${SITE.url}${path}`, lastModified: now, changeFrequency: "yearly", priority: 0.3 });
+  }
   return routes;
 }

@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { SITE } from "@/data/site";
-import { SOLVERS } from "@/data/solvers";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -38,19 +37,6 @@ export const metadata: Metadata = {
     title: SITE.title,
     description: SITE.description,
   },
-  robots: { index: true, follow: true },
-};
-
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "ItemList",
-  name: "Free Online Logic Puzzle Solvers",
-  itemListElement: SOLVERS.filter((s) => s.status === "available").map((s, i) => ({
-    "@type": "ListItem",
-    position: i + 1,
-    name: `${s.name} Solver`,
-    url: `${SITE.url}${s.url}`,
-  })),
 };
 
 export default function RootLayout({
@@ -58,13 +44,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${inter.variable} ${outfit.variable}`}>
-      <body>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

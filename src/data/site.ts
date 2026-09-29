@@ -11,11 +11,8 @@ export const SITE = {
   links: {
     github: "https://github.com/CankatSarac",
     linkedin: "https://www.linkedin.com/in/cankatsarac/",
-    // Project handle on X; swap for a personal handle if preferred.
-    twitter: "https://twitter.com/puzzlesolverfun",
     buyMeACoffee: "https://buymeacoffee.com/cankatsarac",
-    // v1 reuses the existing legal pages until dedicated ones are written.
-    privacy: "https://puzzlesolver.fun/privacy",
-    terms: "https://puzzlesolver.fun/terms",
+    privacy: "/privacy",
+    terms: "/terms",
   },
 } as const;

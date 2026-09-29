@@ -3,7 +3,7 @@ import { Gift, MousePointerClick, Smartphone, Zap } from "lucide-react";
 const FEATURES = [
   { icon: Gift, title: "Completely free", body: "No paywalls, no premium tiers." },
   { icon: MousePointerClick, title: "No signup", body: "Open a solver and start — that's it." },
-  { icon: Zap, title: "Instant results", body: "Fast solvers that find every solution." },
+  { icon: Zap, title: "Instant results", body: "Fast solvers that run right in your browser." },
   { icon: Smartphone, title: "Works on mobile", body: "Responsive on phones and tablets." },
 ];
 
