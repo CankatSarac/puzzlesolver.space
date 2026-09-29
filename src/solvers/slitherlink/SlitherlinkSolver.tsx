@@ -43,8 +43,10 @@ const emptyVerticalEdges = (size: number): VerticalEdges =>
 export default function SlitherlinkSolver() {
   const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE)
   const [grid, setGrid] = useState<Grid>(() => emptyGrid(DEFAULT_GRID_SIZE))
-  const [horizontalEdges, setHorizontalEdges] = useState<HorizontalEdges>(() => emptyHorizontalEdges(DEFAULT_GRID_SIZE))
-  const [verticalEdges, setVerticalEdges] = useState<VerticalEdges>(() => emptyVerticalEdges(DEFAULT_GRID_SIZE))
+  // The lines and crosses the user drew. The solver's answers are kept apart in allSolutions, so
+  // solving again always starts from what the user drew, never from a previous answer.
+  const [drawnHorizontal, setDrawnHorizontal] = useState<HorizontalEdges>(() => emptyHorizontalEdges(DEFAULT_GRID_SIZE))
+  const [drawnVertical, setDrawnVertical] = useState<VerticalEdges>(() => emptyVerticalEdges(DEFAULT_GRID_SIZE))
   const [solved, setSolved] = useState(false)
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -62,11 +64,28 @@ export default function SlitherlinkSolver() {
   } | null>(null)
   const notificationTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // The board shows the selected answer while one is on screen, and the user's own edges otherwise.
+  const shownSolution = solved ? allSolutions[currentSolutionIndex] : undefined
+  const horizontalEdges = shownSolution?.horizontal ?? drawnHorizontal
+  const verticalEdges = shownSolution?.vertical ?? drawnVertical
+  const hasDrawnEdges = [...drawnHorizontal.flat(), ...drawnVertical.flat()].some((edge) => edge !== "empty")
+
+  // Take the answer off the board, e.g. because a clue or edge changed and it may no longer fit.
+  const dropSolution = () => {
+    if (solved) setNotification(null) // a toast about that answer would be stale
+    setSolved(false)
+    setAllSolutions([])
+    setSolutionCount(0)
+    setSolutionsCapped(false)
+    setCurrentSolutionIndex(0)
+    setShowAllSolutions(false)
+  }
+
   // Clear the edges (lines and crosses) but keep the clues
   const clearEdges = (size: number = gridSize) => {
-    setHorizontalEdges(emptyHorizontalEdges(size))
-    setVerticalEdges(emptyVerticalEdges(size))
-    setSolved(false)
+    setDrawnHorizontal(emptyHorizontalEdges(size))
+    setDrawnVertical(emptyVerticalEdges(size))
+    dropSolution()
   }
 
   // Reset grid and edges (optionally to a new size)
@@ -76,31 +95,25 @@ export default function SlitherlinkSolver() {
   }
 
   // Solve: a backtracking search for single closed loops that satisfy every clue. Lines and
-  // crosses already drawn are kept. Deferred a tick so the "Solving..." state can paint first.
+  // crosses the user drew are kept. Deferred a tick so the "Solving..." state can paint first.
   const solvePuzzle = () => {
     setIsLoading(true)
-    setSolutionCount(0)
-    setSolutionsCapped(false)
-    setAllSolutions([])
-    setCurrentSolutionIndex(0)
-    setShowAllSolutions(false)
 
     setTimeout(() => {
       try {
-        const drewEdges = [...horizontalEdges.flat(), ...verticalEdges.flat()].some((edge) => edge !== "empty")
         const result = solveSlitherlink(
-          { size: gridSize, clues: grid, horizontal: horizontalEdges, vertical: verticalEdges },
+          { size: gridSize, clues: grid, horizontal: drawnHorizontal, vertical: drawnVertical },
           MAX_SOLUTIONS,
         )
         const found = result.solutions
+        setCurrentSolutionIndex(0)
+        setShowAllSolutions(false)
 
         if (found.length > 0) {
           const more = result.capped || result.stopped
           setAllSolutions(found)
           setSolutionCount(found.length)
           setSolutionsCapped(more)
-          setHorizontalEdges(found[0].horizontal)
-          setVerticalEdges(found[0].vertical)
           setSolved(true)
           if (found.length === 1 && !more) {
             showNotification("success", "Puzzle Solved!", "Found the loop. It is the only one that fits these clues.")
@@ -113,18 +126,19 @@ export default function SlitherlinkSolver() {
                 : `Found ${found.length} loops that fit these clues. Add clues to narrow it down.`,
             )
           }
-        } else if (result.stopped) {
-          setSolved(false)
-          setShowComplexPuzzleDialog(true)
         } else {
-          setSolved(false)
-          showNotification(
-            "error",
-            "No Solution",
-            drewEdges
-              ? "No single loop fits these clues together with the lines and crosses you drew. Check them, or clear the drawn edges and try again."
-              : "No single loop fits these clues. Please check them.",
-          )
+          dropSolution()
+          if (result.stopped) {
+            setShowComplexPuzzleDialog(true)
+          } else {
+            showNotification(
+              "error",
+              "No Solution",
+              hasDrawnEdges
+                ? "No single loop fits these clues together with the lines and crosses you drew. Check them, or press Clear Lines and try again."
+                : "No single loop fits these clues. Please check them.",
+            )
+          }
         }
       } catch (error) {
         console.error("Solver error:", error)
@@ -154,37 +168,34 @@ export default function SlitherlinkSolver() {
       }
     }
 
-    const newGrid = [...grid]
+    const newGrid = grid.map((cells) => [...cells])
     newGrid[row][col] = newValue
     setGrid(newGrid)
-    setSolved(false)
+    dropSolution()
   }
 
-  // Handle edge clicks
+  // Handle edge clicks. They change the user's own edges; an answer on screen is taken off,
+  // since it was found for the edges as they were.
+  const nextEdgeState = (current: EdgeState): EdgeState =>
+    current === "empty" ? "line" : current === "line" ? "cross" : "empty"
+
   const toggleHorizontalEdge = (row: number, col: number) => {
-    const newEdges = [...horizontalEdges]
-    const current = newEdges[row][col]
-    newEdges[row][col] = current === "empty" ? "line" : current === "line" ? "cross" : "empty"
-    setHorizontalEdges(newEdges)
-    setSolved(false)
+    const newEdges = drawnHorizontal.map((edges) => [...edges])
+    newEdges[row][col] = nextEdgeState(newEdges[row][col])
+    setDrawnHorizontal(newEdges)
+    dropSolution()
   }
 
   const toggleVerticalEdge = (row: number, col: number) => {
-    const newEdges = [...verticalEdges]
-    const current = newEdges[row][col]
-    newEdges[row][col] = current === "empty" ? "line" : current === "line" ? "cross" : "empty"
-    setVerticalEdges(newEdges)
-    setSolved(false)
+    const newEdges = drawnVertical.map((edges) => [...edges])
+    newEdges[row][col] = nextEdgeState(newEdges[row][col])
+    setDrawnVertical(newEdges)
+    dropSolution()
   }
 
   // Reset puzzle
   const resetPuzzle = () => {
     initializeGrid()
-    setAllSolutions([])
-    setCurrentSolutionIndex(0)
-    setShowAllSolutions(false)
-    setSolutionCount(0)
-    setSolutionsCapped(false)
     setNotification(null)
   }
 
@@ -254,12 +265,7 @@ export default function SlitherlinkSolver() {
     if (examples.length > 0) {
       const example = examples[exampleIndex % examples.length]
       setGrid(example.grid.map((row) => [...row]))
-      clearEdges() // Reset edges only; the example's clues must survive
-      setSolved(false)
-      setSolutionCount(0)
-      setSolutionsCapped(false)
-      setAllSolutions([])
-      setShowAllSolutions(false)
+      clearEdges() // Reset edges (and any answer) only; the example's clues must survive
 
       setTimeout(() => {
         showNotification("success", "Example Loaded", `Successfully loaded: ${example.name}`)
@@ -269,19 +275,13 @@ export default function SlitherlinkSolver() {
 
   const nextSolution = () => {
     if (allSolutions.length > 1) {
-      const nextIndex = (currentSolutionIndex + 1) % allSolutions.length
-      setCurrentSolutionIndex(nextIndex)
-      setHorizontalEdges(allSolutions[nextIndex].horizontal)
-      setVerticalEdges(allSolutions[nextIndex].vertical)
+      setCurrentSolutionIndex((currentSolutionIndex + 1) % allSolutions.length)
     }
   }
 
   const previousSolution = () => {
     if (allSolutions.length > 1) {
-      const prevIndex = currentSolutionIndex === 0 ? allSolutions.length - 1 : currentSolutionIndex - 1
-      setCurrentSolutionIndex(prevIndex)
-      setHorizontalEdges(allSolutions[prevIndex].horizontal)
-      setVerticalEdges(allSolutions[prevIndex].vertical)
+      setCurrentSolutionIndex(currentSolutionIndex === 0 ? allSolutions.length - 1 : currentSolutionIndex - 1)
     }
   }
 
@@ -413,10 +413,6 @@ export default function SlitherlinkSolver() {
                     const newSize = Number.parseInt(value)
                     setGridSize(newSize)
                     initializeGrid(newSize)
-                    setAllSolutions([])
-                    setSolutionCount(0)
-                    setCurrentSolutionIndex(0)
-                    setShowAllSolutions(false)
                   }}
                 >
                   <SelectTrigger id="grid-size" aria-label={`Grid size: ${gridSize} by ${gridSize}`} className="w-20">
@@ -738,6 +734,14 @@ export default function SlitherlinkSolver() {
               </div>
             </div>
 
+            {/* Sits under the board rather than in the controls row, where it would add a row on phones
+                and push the board down. */}
+            <div className="flex justify-center">
+              <Button onClick={() => clearEdges()} variant="outline" size="sm" disabled={!hasDrawnEdges && !solved}>
+                🧹 Clear Lines
+              </Button>
+            </div>
+
             {/* All Solutions Display */}
             {showAllSolutions && allSolutions.length >= 13 && (
               <Card className="bg-blue-50 border-blue-200">
@@ -806,8 +810,6 @@ export default function SlitherlinkSolver() {
                         <div className="text-center">
                           <Button
                             onClick={() => {
-                              setHorizontalEdges(solution.horizontal)
-                              setVerticalEdges(solution.vertical)
                               setCurrentSolutionIndex(index)
                               setShowAllSolutions(false)
                             }}
@@ -838,7 +840,10 @@ export default function SlitherlinkSolver() {
                   <p>• Lines are part of the loop, crosses mark edges that are NOT part of the loop</p>
                   <p>• Enter numbers (0-4) for clues, 's' for inside loop, 'w' for outside loop</p>
                   <p>• The loop must be continuous with no branches or isolated segments</p>
-                  <p>• Click &quot;Solve Puzzle&quot; to find the loop. Lines and crosses you have drawn are kept</p>
+                  <p>
+                    • Click &quot;Solve Puzzle&quot; to find the loop. Lines and crosses you have drawn are kept;
+                    &quot;Clear Lines&quot; removes them and keeps your clues
+                  </p>
                   <p>• Keyboard: Tab to an edge and press Enter or Space to change it</p>
                 </CardContent>
               </Card>
