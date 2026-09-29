@@ -18,7 +18,7 @@ export default function TangoPage() {
       <main>
         <TangoSolver />
       </main>
-      <Footer />
+      <Footer className="mt-0" />
     </>
   );
 }

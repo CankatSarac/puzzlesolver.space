@@ -18,7 +18,7 @@ export default function BattleshipPage() {
       <main>
         <BattleshipSolver />
       </main>
-      <Footer />
+      <Footer className="mt-0" />
     </>
   );
 }

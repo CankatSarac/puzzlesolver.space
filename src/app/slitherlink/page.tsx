@@ -18,7 +18,7 @@ export default function SlitherlinkPage() {
       <main>
         <SlitherlinkSolver />
       </main>
-      <Footer />
+      <Footer className="mt-0" />
     </>
   );
 }

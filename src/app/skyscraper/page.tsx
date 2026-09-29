@@ -18,7 +18,7 @@ export default function SkyscraperPage() {
       <main>
         <SkyscraperSolver />
       </main>
-      <Footer />
+      <Footer className="mt-0" />
     </>
   );
 }
