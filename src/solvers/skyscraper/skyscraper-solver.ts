@@ -19,12 +19,24 @@ export type Solution = {
   valid: boolean
 }
 
+export type SolveResult = {
+  solutions: Solution[]
+  /** True when the search hit its time budget before it could finish. */
+  stopped: boolean
+}
+
+/** The search gives up after this long so a hard or contradictory puzzle cannot freeze the tab. */
+const TIME_BUDGET_MS = 2500
+
 export class AdvancedSkyscraperSolver {
   private readonly size: number
   private readonly clues: Clues
   private readonly givenNumbers: { [key: string]: number }
   private solutions: number[][][]
   private maxSolutions: number
+  private started = 0
+  private nodes = 0
+  stopped = false
 
   constructor(puzzle: PuzzleInput, maxSolutions: number = 10) {
     this.size = puzzle.size
@@ -36,6 +48,9 @@ export class AdvancedSkyscraperSolver {
 
   solve(): Solution[] {
     this.solutions = []
+    this.started = Date.now()
+    this.nodes = 0
+    this.stopped = false
     const grid = Array(this.size).fill(null).map(() => Array(this.size).fill(0))
     
     // Apply given numbers
@@ -56,8 +71,12 @@ export class AdvancedSkyscraperSolver {
   }
 
   private solveWithConstraints(grid: number[][], row: number, col: number): boolean {
-    if (this.solutions.length >= this.maxSolutions) {
-      return true // Stop searching after finding enough solutions
+    if (this.solutions.length >= this.maxSolutions || this.stopped) {
+      return true // Stop searching after finding enough solutions, or when out of time
+    }
+    if ((++this.nodes & 1023) === 0 && Date.now() - this.started > TIME_BUDGET_MS) {
+      this.stopped = true
+      return true
     }
 
     // Find next empty cell
@@ -80,7 +99,8 @@ export class AdvancedSkyscraperSolver {
         // Check constraints after placement
         if (this.checkConstraintsAfterPlacement(grid, nextRow, nextCol)) {
           if (this.solveWithConstraints(grid, nextRow, nextCol)) {
-            if (this.solutions.length >= this.maxSolutions) {
+            if (this.solutions.length >= this.maxSolutions || this.stopped) {
+              grid[nextRow][nextCol] = 0
               return true
             }
           }
@@ -124,6 +144,21 @@ export class AdvancedSkyscraperSolver {
   }
 
   private isValidPlacement(grid: number[][], row: number, col: number, value: number): boolean {
+    // A clue c allows at most n - c + 1 + d at distance d from its edge (and clue 1 means the
+    // tallest building stands right at the edge).
+    const n = this.size
+    const edges: [number | null, number][] = [
+      [this.clues.left[row], col],
+      [this.clues.right[row], n - 1 - col],
+      [this.clues.top[col], row],
+      [this.clues.bottom[col], n - 1 - row],
+    ]
+    for (const [clue, distance] of edges) {
+      if (clue === null || clue === undefined) continue
+      if (value > n - clue + 1 + distance) return false
+      if (clue === 1 && distance === 0 && value !== n) return false
+    }
+
     // Check row constraint (no duplicates)
     for (let c = 0; c < this.size; c++) {
       if (c !== col && grid[row][c] === value) {
@@ -204,47 +239,34 @@ export class AdvancedSkyscraperSolver {
   }
 
   private checkPartialConstraints(grid: number[][], row: number, col: number): boolean {
-    // Check if partial row can still satisfy constraints
-    const rowValues = grid[row]
-    const emptyInRow = rowValues.filter(v => v === 0).length
-    
-    if (emptyInRow === 0) {
-      // Row is complete, already checked above
-      return true
-    }
-
-    // Early pruning for visibility constraints. countVisiblePartial only counts the filled prefix
-    // (up to the first empty cell), so every cell from that first gap to the far edge, filled or
-    // not, can still add one visible building. (Using only the number of empty cells here pruned
-    // valid rows such as [1, _, _, 4] with clue 4, so correct puzzles reported "no solution".)
-    if (this.clues.left[row] !== null) {
-      const currentVisible = this.countVisiblePartial(rowValues)
-      const maxPossible = currentVisible + (this.size - rowValues.indexOf(0))
-      if (maxPossible < this.clues.left[row] || currentVisible > this.clues.left[row]) {
-        return false
-      }
-    }
-
-    // Similar check for column
-    const colValues = []
+    const colValues: number[] = []
     for (let r = 0; r < this.size; r++) {
       colValues.push(grid[r][col])
     }
-    const emptyInCol = colValues.filter(v => v === 0).length
-    
-    if (emptyInCol === 0) {
-      // Column is complete, already checked above
-      return true
-    }
+    return (
+      this.lineCanStillWork(grid[row], this.clues.left[row], this.clues.right[row]) &&
+      this.lineCanStillWork(colValues, this.clues.top[col], this.clues.bottom[col])
+    )
+  }
 
-    if (this.clues.top[col] !== null) {
-      const currentVisible = this.countVisiblePartial(colValues)
-      const maxPossible = currentVisible + (this.size - colValues.indexOf(0))
-      if (maxPossible < this.clues.top[col] || currentVisible > this.clues.top[col]) {
-        return false
-      }
+  /**
+   * Early pruning for a partly filled line. countVisiblePartial only counts the filled run next to
+   * an edge (up to the first empty cell), so every cell from that first gap to the far edge, filled
+   * or not, can still add one visible building. (Using only the number of empty cells here pruned
+   * valid rows such as [1, _, _, 4] with clue 4, so correct puzzles reported "no solution".)
+   */
+  private lineCanStillWork(values: number[], fromStart: number | null, fromEnd: number | null): boolean {
+    const firstGap = values.indexOf(0)
+    if (firstGap === -1) return true // complete lines are checked exactly elsewhere
+    if (fromStart !== null) {
+      const visible = this.countVisiblePartial(values)
+      if (visible > fromStart || visible + (this.size - firstGap) < fromStart) return false
     }
-
+    if (fromEnd !== null) {
+      const reversed = [...values].reverse()
+      const visible = this.countVisiblePartial(reversed)
+      if (visible > fromEnd || visible + (this.size - reversed.indexOf(0)) < fromEnd) return false
+    }
     return true
   }
 
@@ -302,7 +324,17 @@ export function solveSkyscraperPuzzle(
   clues: Clues,
   givenNumbers: { [key: string]: number } = {}
 ): Solution[] {
+  return solveSkyscraper(size, clues, givenNumbers).solutions
+}
+
+/** Like solveSkyscraperPuzzle, and also reports whether the search ran out of time. */
+export function solveSkyscraper(
+  size: number,
+  clues: Clues,
+  givenNumbers: { [key: string]: number } = {}
+): SolveResult {
   const puzzle: PuzzleInput = { size, clues, givenNumbers }
   const solver = new AdvancedSkyscraperSolver(puzzle)
-  return solver.solve()
+  const solutions = solver.solve()
+  return { solutions, stopped: solver.stopped }
 }

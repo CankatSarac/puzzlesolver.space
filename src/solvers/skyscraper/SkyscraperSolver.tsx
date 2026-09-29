@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { solveSkyscraperPuzzle, type Clues, type Solution } from "./skyscraper-solver";
+import { solveSkyscraper, type Clues, type Solution } from "./skyscraper-solver";
 
 type ClueSide = keyof Clues;
 
@@ -72,14 +72,17 @@ export default function SkyscraperSolver() {
     // Defer so the "Solving…" state can paint before the synchronous solve.
     setTimeout(() => {
       try {
-        const found = solveSkyscraperPuzzle(size, clues).filter((s) => s.valid);
+        const result = solveSkyscraper(size, clues);
+        const found = result.solutions.filter((s) => s.valid);
         setSolutions(found);
         setIndex(0);
         setMessage(
           found.length === 0
-            ? "No solution found. Check that the clues are consistent."
-            : found.length >= 10
-              ? "Found 10+ solutions (showing the first 10) — add more clues to narrow it down."
+            ? result.stopped
+              ? "The search took too long and was stopped. Add more clues or check the ones you entered."
+              : "No solution found. Check that the clues are consistent."
+            : found.length >= 10 || result.stopped
+              ? `Found ${found.length}+ solutions (showing the first ${found.length}) — add more clues to narrow it down.`
               : `Found ${found.length} solution${found.length > 1 ? "s" : ""}.`
         );
       } catch {
@@ -152,7 +155,7 @@ export default function SkyscraperSolver() {
         </div>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="px-3 sm:px-6">
             <h2 className="flex items-center justify-between gap-3 text-2xl font-semibold leading-none tracking-tight">
               <span>Puzzle</span>
               {solutions.length > 0 && (
@@ -225,15 +228,16 @@ export default function SkyscraperSolver() {
               )}
             </div>
 
-            {message && (
-              <p
-                className={`text-sm font-medium ${
-                  solutions.length > 0 ? "text-green-700" : "text-orange-700"
-                }`}
-              >
-                {message}
-              </p>
-            )}
+            {/* Always mounted (empty when idle) so screen readers announce each result. */}
+            <p
+              role="status"
+              aria-live="polite"
+              className={`text-sm font-medium empty:!mt-0 ${
+                solutions.length > 0 ? "text-green-700" : "text-orange-700"
+              }`}
+            >
+              {message}
+            </p>
           </CardContent>
         </Card>
 
