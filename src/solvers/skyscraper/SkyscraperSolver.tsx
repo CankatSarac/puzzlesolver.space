@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -12,6 +12,13 @@ import { solveSkyscraperPuzzle, type Clues, type Solution } from "./skyscraper-s
 type ClueSide = keyof Clues;
 
 const SIDES: ClueSide[] = ["top", "bottom", "left", "right"];
+
+/** Spoken name for an edge clue, e.g. "Top clue, column 2" or "Left clue, row 3". */
+function clueLabel(side: ClueSide, i: number) {
+  const edge = side[0].toUpperCase() + side.slice(1);
+  const line = side === "top" || side === "bottom" ? "column" : "row";
+  return `${edge} clue, ${line} ${i + 1}`;
+}
 
 function emptyClues(size: number): Clues {
   return {
@@ -32,15 +39,12 @@ const EXAMPLE_4: Clues = {
 };
 
 export default function SkyscraperSolver() {
-  const [isHydrated, setIsHydrated] = useState(false);
   const [size, setSize] = useState(4);
   const [clues, setClues] = useState<Clues>(() => emptyClues(4));
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [index, setIndex] = useState(0);
   const [solving, setSolving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => setIsHydrated(true), []);
 
   const resetTo = useCallback((nextSize: number, nextClues?: Clues) => {
     setSize(nextSize);
@@ -94,14 +98,14 @@ export default function SkyscraperSolver() {
     <input
       key={`${side}-${i}`}
       inputMode="numeric"
-      aria-label={`${side} clue ${i + 1}`}
+      aria-label={clueLabel(side, i)}
       value={clues[side][i] ?? ""}
       onChange={(e) => setClue(side, i, e.target.value)}
-      className="h-10 w-10 rounded-md border border-amber-200 bg-amber-50 text-center text-sm font-semibold text-amber-700 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 sm:h-12 sm:w-12"
+      className="h-9 w-9 rounded-md border border-amber-200 bg-amber-50 text-center text-base font-semibold text-amber-700 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 sm:h-12 sm:w-12 sm:text-sm"
     />
   );
 
-  const blank = (key: string) => <div key={key} className="h-10 w-10 sm:h-12 sm:w-12" />;
+  const blank = (key: string) => <div key={key} className="h-9 w-9 sm:h-12 sm:w-12" />;
 
   const cells: React.ReactNode[] = [];
   for (let r = 0; r < dim; r++) {
@@ -127,7 +131,7 @@ export default function SkyscraperSolver() {
         cells.push(
           <div
             key={key}
-            className="flex h-10 w-10 items-center justify-center rounded-md border border-gray-300 bg-white text-base font-bold text-gray-800 sm:h-12 sm:w-12 sm:text-lg"
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 bg-white text-base font-bold text-gray-800 sm:h-12 sm:w-12 sm:text-lg"
           >
             {value ?? ""}
           </div>
@@ -136,16 +140,8 @@ export default function SkyscraperSolver() {
     }
   }
 
-  if (!isHydrated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-600">Loading skyscraper solver…</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
+    <div className="min-h-screen bg-gray-50 px-2 py-10 sm:px-4">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">Skyscraper Puzzle Solver</h1>
@@ -157,21 +153,21 @@ export default function SkyscraperSolver() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between gap-3">
+            <h2 className="flex items-center justify-between gap-3 text-2xl font-semibold leading-none tracking-tight">
               <span>Puzzle</span>
               {solutions.length > 0 && (
                 <Badge variant="secondary">
                   Solution {index + 1} / {solutions.length}
                 </Badge>
               )}
-            </CardTitle>
+            </h2>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 px-3 sm:px-6">
             <div className="flex flex-wrap items-end gap-4">
               <div className="space-y-1.5">
-                <Label>Grid size</Label>
+                <Label htmlFor="grid-size">Grid size</Label>
                 <Select value={String(size)} onValueChange={(v) => resetTo(Number.parseInt(v, 10))}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger id="grid-size" aria-label={`Grid size: ${size} by ${size}`} className="w-32">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -193,9 +189,10 @@ export default function SkyscraperSolver() {
 
             <Separator />
 
-            <div className="flex justify-center overflow-x-auto py-2">
+            {/* Scrolls inside this box (from the first column) if a screen is still too narrow. */}
+            <div className="overflow-x-auto py-2">
               <div
-                className="grid gap-1"
+                className="mx-auto grid w-max gap-1"
                 style={{ gridTemplateColumns: `repeat(${dim}, minmax(0, max-content))` }}
               >
                 {cells}
@@ -203,7 +200,7 @@ export default function SkyscraperSolver() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={handleSolve} disabled={solving} className="bg-amber-600 hover:bg-amber-700">
+              <Button onClick={handleSolve} disabled={solving} className="bg-amber-700 hover:bg-amber-800">
                 {solving ? "Solving…" : "Solve puzzle"}
               </Button>
               {solutions.length > 1 && (
@@ -231,7 +228,7 @@ export default function SkyscraperSolver() {
             {message && (
               <p
                 className={`text-sm font-medium ${
-                  solutions.length > 0 ? "text-green-700" : "text-orange-600"
+                  solutions.length > 0 ? "text-green-700" : "text-orange-700"
                 }`}
               >
                 {message}
@@ -242,7 +239,7 @@ export default function SkyscraperSolver() {
 
         <Card>
           <CardHeader>
-            <CardTitle>How to play</CardTitle>
+            <h2 className="text-2xl font-semibold leading-none tracking-tight">How to play</h2>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-gray-600">
             <p>• Fill the grid with heights 1–{size}, each used once per row and column.</p>

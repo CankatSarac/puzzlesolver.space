@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { Fragment, useState } from "react"
+import { Coffee } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { SITE } from "@/data/site"
 
 type Symbol = "sun" | "moon" | null
 type Constraint = "equals" | "different" | null
@@ -20,14 +22,22 @@ interface TangoBoard {
   verticalConstraints: VerticalConstraints
 }
 
+const DEFAULT_GRID_SIZE = 6
+
+/** An empty board, built synchronously so the server-rendered HTML already shows the grid. */
+function createEmptyBoard(size: number): TangoBoard {
+  return {
+    grid: Array.from({ length: size }, () => Array<Symbol>(size).fill(null)),
+    horizontalConstraints: Array.from({ length: size }, () => Array<Constraint>(Math.max(0, size - 1)).fill(null)),
+    verticalConstraints: Array.from({ length: Math.max(0, size - 1) }, () => Array<Constraint>(size).fill(null)),
+  }
+}
+
+const CONSTRAINT_NAMES = { equals: "must be equal", different: "must be different" } as const
+
 export default function TangoSolver() {
-  const [isHydrated, setIsHydrated] = useState(false)
-  const [gridSize, setGridSize] = useState(6)
-  const [board, setBoard] = useState<TangoBoard>({
-    grid: [],
-    horizontalConstraints: [],
-    verticalConstraints: []
-  })
+  const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE)
+  const [board, setBoard] = useState<TangoBoard>(() => createEmptyBoard(DEFAULT_GRID_SIZE))
   const [solved, setSolved] = useState(false)
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
@@ -42,54 +52,11 @@ export default function TangoSolver() {
     message: string
   } | null>(null)
 
-  // Handle hydration - wait for client-side mounting
-  useEffect(() => {
-    setIsHydrated(true)
-  }, [])
-
-  // Initialize board
-  const initializeBoard = useCallback(() => {
-    try {
-      const newGrid: Grid = Array(gridSize)
-        .fill(null)
-        .map(() => Array(gridSize).fill(null))
-      
-      const newHorizontalConstraints: HorizontalConstraints = Array(gridSize)
-        .fill(null)
-        .map(() => Array(Math.max(0, gridSize - 1)).fill(null))
-      
-      const newVerticalConstraints: VerticalConstraints = Array(Math.max(0, gridSize - 1))
-        .fill(null)
-        .map(() => Array(gridSize).fill(null))
-
-      setBoard({
-        grid: newGrid,
-        horizontalConstraints: newHorizontalConstraints,
-        verticalConstraints: newVerticalConstraints
-      })
-      setSolved(false)
-    } catch (error) {
-      console.error('Error initializing board:', error)
-      // Fallback to a simple 4x4 board
-      const fallbackGrid: Grid = Array(4).fill(null).map(() => Array(4).fill(null))
-      const fallbackHorizontal: HorizontalConstraints = Array(4).fill(null).map(() => Array(3).fill(null))
-      const fallbackVertical: VerticalConstraints = Array(3).fill(null).map(() => Array(4).fill(null))
-      
-      setBoard({
-        grid: fallbackGrid,
-        horizontalConstraints: fallbackHorizontal,
-        verticalConstraints: fallbackVertical
-      })
-      setSolved(false)
-    }
-  }, [gridSize])
-
-  // Initialize board only after hydration
-  useEffect(() => {
-    if (isHydrated) {
-      initializeBoard()
-    }
-  }, [isHydrated, initializeBoard])
+  // Reset to an empty board of the current size
+  const initializeBoard = () => {
+    setBoard(createEmptyBoard(gridSize))
+    setSolved(false)
+  }
 
   // Update grid cell
   const updateGridCell = (row: number, col: number, symbol: Symbol) => {
@@ -544,47 +511,62 @@ export default function TangoSolver() {
   // Symbol component
   const SymbolDisplay = ({ symbol }: { symbol: Symbol }) => {
     if (symbol === "sun") {
-      return <span className="text-3xl leading-none flex items-center justify-center">☀️</span>
+      return <span className="text-xl sm:text-3xl leading-none flex items-center justify-center">☀️</span>
     } else if (symbol === "moon") {
-      return <span className="text-3xl leading-none flex items-center justify-center">🌙</span>
+      return <span className="text-xl sm:text-3xl leading-none flex items-center justify-center">🌙</span>
     }
-    return <span className="text-gray-400 text-xs text-center">Click to select</span>
+    // Empty cell: a quiet "+" hint. The trigger's aria-label carries the real name.
+    return <span aria-hidden="true" className="text-lg leading-none text-gray-500">+</span>
   }
 
   // Constraint component
   const ConstraintDisplay = ({ constraint }: { constraint: Constraint }) => {
     if (constraint === "equals") {
-      return <span className="text-lg font-bold text-blue-600">=</span>
+      return <span className="text-base sm:text-lg font-bold text-blue-600">=</span>
     } else if (constraint === "different") {
-      return <span className="text-lg font-bold text-red-600">≠</span>
+      return <span className="text-base sm:text-lg font-bold text-red-600">≠</span>
     }
-    return <span className="text-gray-400 text-xs">Click</span>
+    return <span aria-hidden="true" className="text-base font-bold leading-none text-gray-600">·</span>
   }
 
-  if (!isHydrated) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-black">Loading Tango puzzle solver...</p>
+  const constraintName = (constraint: Constraint) => (constraint ? CONSTRAINT_NAMES[constraint] : "none")
+
+  const constraintOptions = (
+    <SelectContent className="bg-white border-2 border-gray-300 shadow-lg z-50" style={{backgroundColor: 'white', color: 'black'}}>
+      <SelectItem value="empty" className="text-gray-600 hover:bg-gray-100 focus:bg-gray-100" style={{backgroundColor: 'white', color: '#4b5563'}}>
+        <div className="flex items-center gap-2">
+          <span className="w-6 h-6 border border-gray-300 rounded flex items-center justify-center">∅</span>
+          <span>No constraint</span>
         </div>
-      </div>
-    )
-  }
+      </SelectItem>
+      <SelectItem value="equals" className="text-blue-600 hover:bg-blue-50 focus:bg-blue-50" style={{backgroundColor: 'white', color: '#2563eb'}}>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold">=</span>
+          <span>Must be equal</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="different" className="text-red-600 hover:bg-red-50 focus:bg-red-50" style={{backgroundColor: 'white', color: '#dc2626'}}>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold">≠</span>
+          <span>Must be different</span>
+        </div>
+      </SelectItem>
+    </SelectContent>
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4" suppressHydrationWarning>
+    <div className="min-h-screen bg-gray-50 px-2 py-4 sm:p-4" suppressHydrationWarning>
       <div className="max-w-4xl mx-auto">
         <Card suppressHydrationWarning>
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-black">LinkedIn Tango Puzzle Solver</CardTitle>
+          <CardHeader className="text-center px-4 sm:px-6">
+            <h1 className="text-3xl font-bold leading-none tracking-tight text-black">LinkedIn Tango Puzzle Solver</h1>
             <p className="text-black">
               Free online Tango puzzle solver inspired by LinkedIn&apos;s daily puzzle game. 
               Fill the grid with suns ☀️ and moons 🌙 following the rules. Supports multiple grid sizes!
             </p>
           </CardHeader>
 
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 px-3 sm:px-6">
             {/* Controls */}
             <div className="flex flex-wrap gap-4 justify-center items-center">
               <div className="flex items-center gap-2">
@@ -595,6 +577,7 @@ export default function TangoSolver() {
                     const newSize = Number.parseInt(value)
                     if (newSize >= 4 && newSize <= 6) {
                       setGridSize(newSize)
+                      setBoard(createEmptyBoard(newSize))
                       setSolved(false)
                       setAllSolutions([])
                       setSolutionCount(0)
@@ -604,7 +587,7 @@ export default function TangoSolver() {
                     }
                   }}
                 >
-                  <SelectTrigger className="w-20 bg-white text-black border-gray-300">
+                  <SelectTrigger id="grid-size" aria-label={`Grid size: ${gridSize} by ${gridSize}`} className="w-20 bg-white text-black border-gray-300">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-gray-300 z-50" style={{backgroundColor: 'white', color: 'black'}}>
@@ -659,14 +642,16 @@ export default function TangoSolver() {
                     {notification.type === 'info' && <span className="text-xl">ℹ️</span>}
                   </div>
                   <div className="ml-3 flex-1">
-                    <h3 className="text-sm font-medium">{notification.title}</h3>
+                    <p className="text-sm font-medium">{notification.title}</p>
                     <p className="mt-1 text-sm opacity-90">{notification.message}</p>
                   </div>
                   <button
+                    type="button"
+                    aria-label="Dismiss"
                     onClick={() => setNotification(null)}
                     className="ml-4 flex-shrink-0 text-lg hover:opacity-70"
                   >
-                    ×
+                    <span aria-hidden="true">×</span>
                   </button>
                 </div>
               </div>
@@ -725,136 +710,109 @@ export default function TangoSolver() {
 
             <Separator />
 
-            {/* Puzzle Grid */}
-            <div className="flex justify-center">
-              <div className="inline-block space-y-1">
+            {/* Puzzle Grid. One CSS grid (cells + constraint tracks) whose cell tracks shrink
+                on phones; if a screen is still too narrow it scrolls inside this box from column 1. */}
+            <div className="-mx-1 overflow-x-auto px-1 py-1">
+              <div
+                className="mx-auto grid w-full max-w-max gap-0.5 [--tango-k:26px] sm:gap-1 sm:[--tango-k:2.5rem]"
+                style={{
+                  gridTemplateColumns: `repeat(${gridSize - 1}, minmax(1.75rem, 5rem) var(--tango-k)) minmax(1.75rem, 5rem)`,
+                }}
+              >
                 {board.grid.map((row, rowIndex) => (
-                  <div key={rowIndex} className="space-y-1">
-                    {/* Main row with cells and horizontal constraints */}
-                    <div className="flex items-center space-x-1">
-                      {row.map((cell, colIndex) => (
-                        <div key={colIndex} className="flex items-center space-x-1">
-                          {/* Cell */}
-                          <div className="w-20 h-20 flex items-center justify-center border-2 border-gray-400 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                            <Select 
-                              value={cell ?? "empty"} 
-                              onValueChange={(value) => updateGridCell(rowIndex, colIndex, value === "empty" ? null : value as Symbol)}
+                  <Fragment key={rowIndex}>
+                    {row.map((cell, colIndex) => (
+                      <Fragment key={colIndex}>
+                        {/* Cell */}
+                        <div
+                          style={{ gridRow: rowIndex * 2 + 1, gridColumn: colIndex * 2 + 1 }}
+                          className="aspect-square w-full flex items-center justify-center border-2 border-gray-400 bg-white rounded-md sm:rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <Select 
+                            value={cell ?? "empty"} 
+                            onValueChange={(value) => updateGridCell(rowIndex, colIndex, value === "empty" ? null : value as Symbol)}
+                          >
+                            <SelectTrigger
+                              aria-label={`Row ${rowIndex + 1}, column ${colIndex + 1}: ${cell ?? "empty"}`}
+                              className="w-full h-full border-0 bg-transparent px-0 sm:px-3 text-black hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 flex items-center justify-center max-sm:[&>svg]:hidden"
                             >
-                              <SelectTrigger className="w-full h-full border-0 bg-transparent text-black hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 flex items-center justify-center">
-                                <SelectValue className="flex items-center justify-center w-full h-full">
-                                  <SymbolDisplay symbol={cell} />
+                              <SelectValue className="flex items-center justify-center w-full h-full">
+                                <SymbolDisplay symbol={cell} />
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border-2 border-gray-300 shadow-lg z-50" style={{backgroundColor: 'white', color: 'black'}}>
+                              <SelectItem value="empty" className="text-gray-600 hover:bg-gray-100 focus:bg-gray-100" style={{backgroundColor: 'white', color: '#4b5563'}}>
+                                <div className="flex items-center gap-2">
+                                  <span className="w-6 h-6 border border-gray-300 rounded flex items-center justify-center">∅</span>
+                                  <span>Empty</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="sun" className="text-black hover:bg-yellow-50 focus:bg-yellow-50" style={{backgroundColor: 'white', color: 'black'}}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-3xl leading-none">☀️</span>
+                                  <span>Sun</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="moon" className="text-black hover:bg-blue-50 focus:bg-blue-50" style={{backgroundColor: 'white', color: 'black'}}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-3xl leading-none">🌙</span>
+                                  <span>Moon</span>
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Horizontal constraint (between this cell and the next one in the row) */}
+                        {colIndex < gridSize - 1 && (
+                          <div
+                            style={{ gridRow: rowIndex * 2 + 1, gridColumn: colIndex * 2 + 2 }}
+                            className="self-center w-[26px] h-[26px] sm:w-10 sm:h-10 flex items-center justify-center bg-gray-100 rounded-full border border-gray-300 hover:bg-gray-200 transition-colors"
+                          >
+                            <Select 
+                              value={board.horizontalConstraints[rowIndex][colIndex] ?? "empty"} 
+                              onValueChange={(value) => updateHorizontalConstraint(rowIndex, colIndex, value === "empty" ? null : value as Constraint)}
+                            >
+                              <SelectTrigger
+                                aria-label={`Constraint between row ${rowIndex + 1}, columns ${colIndex + 1} and ${colIndex + 2}: ${constraintName(board.horizontalConstraints[rowIndex][colIndex])}`}
+                                className="w-full h-full border-0 bg-transparent px-0 sm:px-1 justify-center gap-0.5 text-black max-sm:[&>svg]:hidden"
+                              >
+                                <SelectValue className="flex items-center justify-center">
+                                  <ConstraintDisplay constraint={board.horizontalConstraints[rowIndex][colIndex]} />
                                 </SelectValue>
                               </SelectTrigger>
-                              <SelectContent className="bg-white border-2 border-gray-300 shadow-lg z-50" style={{backgroundColor: 'white', color: 'black'}}>
-                                <SelectItem value="empty" className="text-gray-600 hover:bg-gray-100 focus:bg-gray-100" style={{backgroundColor: 'white', color: '#6b7280'}}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-6 h-6 border border-gray-300 rounded flex items-center justify-center">∅</span>
-                                    <span>Empty</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="sun" className="text-black hover:bg-yellow-50 focus:bg-yellow-50" style={{backgroundColor: 'white', color: 'black'}}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-3xl leading-none">☀️</span>
-                                    <span>Sun</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="moon" className="text-black hover:bg-blue-50 focus:bg-blue-50" style={{backgroundColor: 'white', color: 'black'}}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-3xl leading-none">🌙</span>
-                                    <span>Moon</span>
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
+                              {constraintOptions}
                             </Select>
                           </div>
-                          
-                          {/* Horizontal constraint */}
-                          {colIndex < gridSize - 1 && (
-                            <div className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-full border border-gray-300 hover:bg-gray-200 transition-colors">
-                              <Select 
-                                value={board.horizontalConstraints[rowIndex][colIndex] ?? "empty"} 
-                                onValueChange={(value) => updateHorizontalConstraint(rowIndex, colIndex, value === "empty" ? null : value as Constraint)}
-                              >
-                                <SelectTrigger className="w-full h-full border-0 bg-transparent text-black">
-                                  <SelectValue className="flex items-center justify-center">
-                                    <ConstraintDisplay constraint={board.horizontalConstraints[rowIndex][colIndex]} />
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-white border-2 border-gray-300 shadow-lg z-50" style={{backgroundColor: 'white', color: 'black'}}>
-                                  <SelectItem value="empty" className="text-gray-600 hover:bg-gray-100 focus:bg-gray-100" style={{backgroundColor: 'white', color: '#6b7280'}}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-6 h-6 border border-gray-300 rounded flex items-center justify-center">∅</span>
-                                      <span>No constraint</span>
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="equals" className="text-blue-600 hover:bg-blue-50 focus:bg-blue-50" style={{backgroundColor: 'white', color: '#2563eb'}}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-lg font-bold">=</span>
-                                      <span>Must be equal</span>
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="different" className="text-red-600 hover:bg-red-50 focus:bg-red-50" style={{backgroundColor: 'white', color: '#dc2626'}}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-lg font-bold">≠</span>
-                                      <span>Must be different</span>
-                                    </div>
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
+                        )}
+                      </Fragment>
+                    ))}
+
+                    {/* Vertical constraints (between this row and the next one) */}
+                    {rowIndex < gridSize - 1 &&
+                      board.verticalConstraints[rowIndex].map((constraint, colIndex) => (
+                        <div
+                          key={`v-${colIndex}`}
+                          style={{ gridRow: rowIndex * 2 + 2, gridColumn: colIndex * 2 + 1 }}
+                          className="w-full h-[26px] sm:h-8 flex items-center justify-center bg-gray-100 rounded-md sm:rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors"
+                        >
+                          <Select 
+                            value={constraint ?? "empty"} 
+                            onValueChange={(value) => updateVerticalConstraint(rowIndex, colIndex, value === "empty" ? null : value as Constraint)}
+                          >
+                            <SelectTrigger
+                              aria-label={`Constraint between column ${colIndex + 1}, rows ${rowIndex + 1} and ${rowIndex + 2}: ${constraintName(constraint)}`}
+                              className="w-full h-full border-0 bg-transparent px-0 sm:px-3 justify-center sm:justify-between text-black max-sm:[&>svg]:hidden"
+                            >
+                              <SelectValue className="flex items-center justify-center">
+                                <ConstraintDisplay constraint={constraint} />
+                              </SelectValue>
+                            </SelectTrigger>
+                            {constraintOptions}
+                          </Select>
                         </div>
                       ))}
-                    </div>
-                    
-                    {/* Vertical constraints row */}
-                    {rowIndex < gridSize - 1 && (
-                      <div className="flex items-center space-x-1">
-                        {board.verticalConstraints[rowIndex].map((constraint, colIndex) => (
-                          <div key={colIndex} className="flex items-center space-x-1">
-                            {/* Vertical constraint */}
-                            <div className="w-20 h-8 flex items-center justify-center bg-gray-100 rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors">
-                              <Select 
-                                value={constraint ?? "empty"} 
-                                onValueChange={(value) => updateVerticalConstraint(rowIndex, colIndex, value === "empty" ? null : value as Constraint)}
-                              >
-                                <SelectTrigger className="w-full h-full border-0 bg-transparent text-black">
-                                  <SelectValue className="flex items-center justify-center">
-                                    <ConstraintDisplay constraint={constraint} />
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-white border-2 border-gray-300 shadow-lg z-50" style={{backgroundColor: 'white', color: 'black'}}>
-                                  <SelectItem value="empty" className="text-gray-600 hover:bg-gray-100 focus:bg-gray-100" style={{backgroundColor: 'white', color: '#6b7280'}}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-6 h-6 border border-gray-300 rounded flex items-center justify-center">∅</span>
-                                      <span>No constraint</span>
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="equals" className="text-blue-600 hover:bg-blue-50 focus:bg-blue-50" style={{backgroundColor: 'white', color: '#2563eb'}}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-lg font-bold">=</span>
-                                      <span>Must be equal</span>
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="different" className="text-red-600 hover:bg-red-50 focus:bg-red-50" style={{backgroundColor: 'white', color: '#dc2626'}}>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-lg font-bold">≠</span>
-                                      <span>Must be different</span>
-                                    </div>
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            
-                            {/* Spacer for horizontal constraint */}
-                            {colIndex < gridSize - 1 && (
-                              <div className="w-10 h-8"></div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  </Fragment>
                 ))}
               </div>
             </div>
@@ -863,9 +821,9 @@ export default function TangoSolver() {
             {showAllSolutions && allSolutions.length > 10 && (
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader>
-                  <CardTitle className="text-lg text-blue-800 flex items-center gap-2">
+                  <h2 className="text-lg font-semibold leading-none tracking-tight text-blue-800 flex items-center gap-2">
                     🔢 All {solutionCount} Solutions
-                  </CardTitle>
+                  </h2>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
@@ -915,7 +873,7 @@ export default function TangoSolver() {
             {showControls && (
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader>
-                  <CardTitle className="text-lg text-blue-800">How to Play Tango</CardTitle>
+                  <h2 className="text-lg font-semibold leading-none tracking-tight text-blue-800">How to Play Tango</h2>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-blue-800">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -944,10 +902,10 @@ export default function TangoSolver() {
             {/* Developer Contact Section */}
             <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
               <CardHeader>
-                <CardTitle className="text-xl text-center text-gray-800 flex items-center justify-center gap-2">
-                  <span className="text-2xl">👨‍💻</span>
+                <h2 className="text-xl font-semibold leading-none tracking-tight text-center text-gray-800 flex items-center justify-center gap-2">
+                  <span className="text-2xl" aria-hidden="true">👨‍💻</span>
                   Get In Touch
-                </CardTitle>
+                </h2>
                 <p className="text-center text-gray-600">
                   Have a puzzle type you&apos;d like us to add? Found a bug? We&apos;d love to hear from you!
                 </p>
@@ -956,36 +914,30 @@ export default function TangoSolver() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800 mb-1">LinkedIn</h4>
-                      <Button
-                        variant="link"
-                        onClick={() => window.open("https://www.linkedin.com/in/cankatsarac/", "_blank")}
-                        className="p-0 h-auto text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        Connect with the Developer
+                      <h3 className="font-semibold text-gray-800 mb-1">LinkedIn</h3>
+                      <Button asChild variant="link" className="p-0 h-auto text-blue-600 hover:text-blue-800 text-sm">
+                        <a href={SITE.links.linkedin} target="_blank" rel="noopener noreferrer">
+                          Connect with the Developer
+                        </a>
                       </Button>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                     <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                      <svg className="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20.216 6.415l-.132-.666c-.119-.598-.388-1.163-.766-1.613a4.44 4.44 0 0 0-1.364-1.04c-.476-.275-1.039-.428-1.612-.428-.297 0-.583.034-.863.1-.274.065-.54.159-.795.275-.255.117-.49.256-.713.416-.222.16-.425.344-.61.548a2.8 2.8 0 0 0-.438.65 18.84 18.84 0 0 0-.401.968c-.074.204-.12.417-.138.632-.018.218-.006.438.038.649.044.21.123.413.232.598.109.185.249.35.417.49.17.14.363.25.577.327.214.077.448.118.683.118.235 0 .469-.041.683-.118.214-.077.407-.187.577-.327.168-.14.308-.305.417-.49.109-.185.188-.388.232-.598.044-.211.056-.431.038-.649-.018-.215-.064-.428-.138-.632a18.84 18.84 0 0 0-.401-.968 2.8 2.8 0 0 0-.438-.65c-.185-.204-.388-.388-.61-.548-.223-.16-.458-.299-.713-.416a4.364 4.364 0 0 0-.795-.275 3.674 3.674 0 0 0-.863-.1c-.573 0-1.136.153-1.612.428a4.44 4.44 0 0 0-1.364 1.04c-.378.45-.647 1.015-.766 1.613l-.132.666c-.09.453-.106.922-.049 1.379.057.456.191.896.389 1.298.199.402.464.764.783 1.062.319.298.693.531 1.103.687.41.156.85.234 1.292.229.441-.005.878-.09 1.283-.25.405-.161.773-.4 1.084-.707.311-.307.563-.679.742-1.096.179-.417.284-.87.308-1.329.024-.458-.026-.918-.147-1.36z"/>
-                      </svg>
+                      <Coffee className="w-6 h-6 text-orange-600" aria-hidden="true" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800 mb-1">Support Development</h4>
-                      <Button
-                        variant="link"
-                        onClick={() => window.open("https://buymeacoffee.com/cankatsarac", "_blank")}
-                        className="p-0 h-auto text-orange-600 hover:text-orange-800 text-sm"
-                      >
-                        Buy me a coffee ☕
+                      <h3 className="font-semibold text-gray-800 mb-1">Support Development</h3>
+                      <Button asChild variant="link" className="p-0 h-auto text-orange-700 hover:text-orange-900 text-sm">
+                        <a href={SITE.links.buyMeACoffee} target="_blank" rel="noopener noreferrer">
+                          Buy me a coffee ☕
+                        </a>
                       </Button>
                     </div>
                   </div>
@@ -995,12 +947,16 @@ export default function TangoSolver() {
                   <p className="text-sm text-gray-600 mb-3">
                     This Tango puzzle solver was created with passion for puzzle games and web development.
                   </p>
-                  <p className="text-xs text-gray-500 mt-3">
+                  <p className="text-xs text-gray-600 mt-3">
                     If you enjoy this puzzle solver, consider connecting or supporting future development!
                   </p>
                 </div>
               </CardContent>
             </Card>
+
+            <p className="text-center text-xs text-gray-600">
+              Not affiliated with or endorsed by LinkedIn. &ldquo;Tango&rdquo; is used only to describe the puzzle this tool solves.
+            </p>
           </CardContent>
         </Card>
       </div>
