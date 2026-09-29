@@ -213,10 +213,13 @@ export class AdvancedSkyscraperSolver {
       return true
     }
 
-    // Early pruning for visibility constraints
+    // Early pruning for visibility constraints. countVisiblePartial only counts the filled prefix
+    // (up to the first empty cell), so every cell from that first gap to the far edge, filled or
+    // not, can still add one visible building. (Using only the number of empty cells here pruned
+    // valid rows such as [1, _, _, 4] with clue 4, so correct puzzles reported "no solution".)
     if (this.clues.left[row] !== null) {
       const currentVisible = this.countVisiblePartial(rowValues)
-      const maxPossible = currentVisible + emptyInRow
+      const maxPossible = currentVisible + (this.size - rowValues.indexOf(0))
       if (maxPossible < this.clues.left[row] || currentVisible > this.clues.left[row]) {
         return false
       }
@@ -236,7 +239,7 @@ export class AdvancedSkyscraperSolver {
 
     if (this.clues.top[col] !== null) {
       const currentVisible = this.countVisiblePartial(colValues)
-      const maxPossible = currentVisible + emptyInCol
+      const maxPossible = currentVisible + (this.size - colValues.indexOf(0))
       if (maxPossible < this.clues.top[col] || currentVisible > this.clues.top[col]) {
         return false
       }
