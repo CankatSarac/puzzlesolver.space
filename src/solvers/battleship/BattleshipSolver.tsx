@@ -59,6 +59,8 @@ export default function BattleshipSolver() {
   const [solved, setSolved] = useState(false)
   const [solution, setSolution] = useState<any>(null)
   const [showControls, setShowControls] = useState(true)
+  const [solving, setSolving] = useState(false)
+  const [status, setStatus] = useState<{ tone: "success" | "info" | "error"; text: string } | null>(null)
 
   // Reset grid and clues (optionally to a new size)
   const initializeGrid = (size: number = gridSize) => {
@@ -66,6 +68,7 @@ export default function BattleshipSolver() {
     setClues(emptyClues(size))
     setSolved(false)
     setSolution(null)
+    setStatus(null)
   }
 
   // Handle grid cell changes
@@ -86,18 +89,20 @@ export default function BattleshipSolver() {
     setClues(newClues)
     setSolved(false)
     setSolution(null)
+    setStatus(null)
   }
 
   // Handle clue changes
   const updateClue = (direction: "left" | "top", index: number, value: string) => {
     const num = value === "" ? null : Number.parseInt(value)
-    if (num !== null && (num < 0 || num > gridSize)) return
+    if (num !== null && (Number.isNaN(num) || num < 0 || num > gridSize)) return
 
     const newClues = { ...clues }
     newClues[direction][index] = num
     setClues(newClues)
     setSolved(false)
     setSolution(null)
+    setStatus(null)
   }
 
   // Reset puzzle
@@ -105,7 +110,7 @@ export default function BattleshipSolver() {
     initializeGrid()
   }
 
-  // Solve puzzle
+  // Solve puzzle. Deferred a tick so the "Solving…" state can paint before the synchronous search.
   const solvePuzzle = () => {
     const puzzle: BattleshipPuzzle = {
       rows: gridSize,
@@ -113,53 +118,62 @@ export default function BattleshipSolver() {
       clues: clues,
     }
 
-    try {
-      const result = solveBattleshipPuzzle(puzzle)
-      setSolution(result)
+    setSolving(true)
+    setStatus(null)
+    setTimeout(() => {
+      try {
+        const result = solveBattleshipPuzzle(puzzle)
+        setSolution(result)
 
-      if (result.valid) {
-        const formattedGrid = formatBattleshipSolution(result)
-        setGrid(formattedGrid)
-        setSolved(true)
-      } else {
-        setSolved(false)
-        alert("No solution found. Please check your clues.")
+        if (result.valid) {
+          setGrid(formatBattleshipSolution(result))
+          setSolved(true)
+          setStatus(
+            result.multiple
+              ? { tone: "info", text: "More than one arrangement fits these clues. This is one of them; add a hint to pin it down." }
+              : { tone: "success", text: "This is the only arrangement that fits the clues." },
+          )
+        } else {
+          setSolved(false)
+          setStatus({ tone: "error", text: result.message ?? "No solution found. Please check your clues." })
+        }
+      } catch (error) {
+        console.error("Solver error:", error)
+        setStatus({ tone: "error", text: "Something went wrong while solving. Please check your clues." })
+      } finally {
+        setSolving(false)
       }
-    } catch (error) {
-      console.error("Solver error:", error)
-      alert("Error solving puzzle. Please check your clues.")
-    }
+    }, 20)
   }
 
-  // Load example puzzle
+  // Load example puzzle: a verified 10×10 puzzle with a single solution.
   const loadExample = () => {
-    const newGrid: Grid = Array(10)
-      .fill(null)
-      .map(() => Array(10).fill(""))
+    const newGrid: Grid = emptyGrid(10)
     const newClues: Clues = {
-      left: [2, 1, 2, 1, 4, 0, 3, 1, 2, 4],
-      top: [3, 1, 2, 2, 1, 2, 1, 1, 3, 4],
+      left: [2, 1, 2, 1, 5, 1, 2, 1, 3, 2],
+      top: [5, 0, 0, 3, 2, 5, 1, 1, 1, 2],
       cells: {
-        "1,3": "o", // Single ship
-        "4,0": "d", // Ship top
-        "7,8": "w", // Water
+        "1,9": "d", // Ship top (row 2, column 10)
+        "7,0": "m", // Ship middle (row 8, column 1)
       },
     }
 
     // Update grid with example clues
-    newGrid[1][3] = "o"
-    newGrid[4][0] = "d"
-    newGrid[7][8] = "w"
+    for (const [key, value] of Object.entries(newClues.cells)) {
+      const [r, c] = key.split(",").map(Number)
+      newGrid[r][c] = value
+    }
 
     setGridSize(10)
     setGrid(newGrid)
     setClues(newClues)
     setSolved(false)
     setSolution(null)
+    setStatus(null)
   }
   // Copy to clipboard
   const copyToClipboard = () => {
-    const gridString = grid.map((row) => row.map((cell) => cell ?? ".").join(" ")).join("\n")
+    const gridString = grid.map((row) => row.map((cell) => cell || ".").join(" ")).join("\n")
     navigator.clipboard.writeText(gridString)
   }
 
@@ -199,8 +213,8 @@ export default function BattleshipSolver() {
                 </Select>
               </div>
 
-              <Button onClick={solvePuzzle} variant="default">
-                Solve Puzzle
+              <Button onClick={solvePuzzle} variant="default" disabled={solving}>
+                {solving ? "Solving…" : "Solve Puzzle"}
               </Button>
 
               <Button onClick={resetPuzzle} variant="outline">
@@ -220,11 +234,19 @@ export default function BattleshipSolver() {
               </Button>
             </div>
 
-            {solved && (
-              <div className="text-center">
-                <Badge className="text-lg px-4 py-2 bg-green-600">✓ Puzzle Solved!</Badge>
-              </div>
-            )}
+            {/* Solve result. Always mounted (empty when idle) so screen readers announce changes. */}
+            <div role="status" aria-live="polite" className="space-y-2 text-center empty:!mt-0">
+              {solved && <Badge className="text-lg px-4 py-2 bg-green-600">✓ Puzzle Solved!</Badge>}
+              {status && (
+                <p
+                  className={`text-sm font-medium ${
+                    status.tone === "error" ? "text-red-700" : status.tone === "info" ? "text-blue-800" : "text-green-700"
+                  }`}
+                >
+                  {status.text}
+                </p>
+              )}
+            </div>
 
             <Separator />
 

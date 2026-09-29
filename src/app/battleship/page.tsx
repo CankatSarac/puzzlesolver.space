@@ -6,7 +6,7 @@ import BattleshipSolver from "@/solvers/battleship/BattleshipSolver";
 
 const title = "Battleship Puzzle Solver — Free Online Bimaru Solver";
 const description =
-  "Solve Battleship (Bimaru) grid puzzles instantly. Enter the row and column ship-count clues and any cell hints, then auto-solve via constraint-based deduction.";
+  "Solve Battleship (Bimaru) grid puzzles instantly. Enter the row and column ship-count clues and any cell hints, and the solver places the standard fleet with a constraint-based search.";
 
 export const metadata = pageMetadata({ path: "/battleship", title, description });
 
