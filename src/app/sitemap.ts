@@ -7,6 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const routes: MetadataRoute.Sitemap = [
     { url: SITE.url, lastModified: now, changeFrequency: "weekly", priority: 1 },
   ];
+  routes.push({url:`${SITE.url}/learn`,lastModified:now,changeFrequency:"monthly",priority:0.7});
   for (const s of SOLVERS) {
     if (s.status === "available" && s.url) {
       routes.push({

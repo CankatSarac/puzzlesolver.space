@@ -1,12 +1,15 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+
+import { PuzzleTools } from '@/learning/PuzzleTools';
+import type { PuzzleState } from '@/learning/puzzle';
 
 type Symbol = "sun" | "moon" | null
 type Constraint = "equals" | "different" | null
@@ -21,6 +24,7 @@ interface TangoBoard {
 }
 
 export default function TangoSolver() {
+  const restorePending = useRef<Extract<PuzzleState,{type:'tango'}> | null>(null);
   const [isHydrated, setIsHydrated] = useState(false)
   const [gridSize, setGridSize] = useState(6)
   const [board, setBoard] = useState<TangoBoard>({
@@ -49,6 +53,7 @@ export default function TangoSolver() {
 
   // Initialize board
   const initializeBoard = useCallback(() => {
+    if (restorePending.current) { const saved=restorePending.current; restorePending.current=null; setBoard(saved.board);setSolved(false);return; }
     try {
       const newGrid: Grid = Array(gridSize)
         .fill(null)
@@ -585,6 +590,7 @@ export default function TangoSolver() {
           </CardHeader>
 
           <CardContent className="space-y-6">
+
             {/* Controls */}
             <div className="flex flex-wrap gap-4 justify-center items-center">
               <div className="flex items-center gap-2">
@@ -724,6 +730,7 @@ export default function TangoSolver() {
             )}
 
             <Separator />
+            <PuzzleTools type="tango" value={{type:'tango',size:gridSize,board}} active={!solved && !isLoading} onReset={resetPuzzle} onRestore={saved=>{if(saved.type!=='tango')return;restorePending.current=saved.size!==gridSize?saved:null;setGridSize(saved.size);setBoard(saved.board);setAllSolutions([]);setSolutionCount(0);setShowAllSolutions(false);setSolved(false);}} />
 
             {/* Puzzle Grid */}
             <div className="flex justify-center">

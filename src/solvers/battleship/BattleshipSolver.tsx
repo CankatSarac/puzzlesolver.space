@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,6 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { solveBattleshipPuzzle, formatBattleshipSolution, type BattleshipPuzzle } from "./battleship-solver"
+
+import { PuzzleTools } from '@/learning/PuzzleTools';
+import type { PuzzleState } from '@/learning/puzzle';
 
 type Grid = string[][]
 type Clues = {
@@ -29,6 +32,7 @@ const CELL_TYPES = {
 }
 
 export default function BattleshipSolver() {
+  const restorePending = useRef<Extract<PuzzleState,{type:'battleship'}> | null>(null);
   const [isHydrated, setIsHydrated] = useState(false)
   const [gridSize, setGridSize] = useState(10)
   const [grid, setGrid] = useState<Grid>([])
@@ -44,6 +48,7 @@ export default function BattleshipSolver() {
 
   // Initialize grid and clues
   const initializeGrid = useCallback(() => {
+    if (restorePending.current) { const saved=restorePending.current; restorePending.current=null; setGrid(saved.grid);setClues(saved.clues);setSolution(null);setSolved(false);return; }
     const newGrid: Grid = Array(gridSize)
       .fill(null)
       .map(() => Array(gridSize).fill(""))
@@ -180,6 +185,7 @@ export default function BattleshipSolver() {
           </CardHeader>
 
           <CardContent className="space-y-6">
+
             {/* Controls */}
             <div className="flex flex-wrap gap-4 justify-center items-center">
               <div className="flex items-center gap-2">
@@ -227,6 +233,7 @@ export default function BattleshipSolver() {
             )}
 
             <Separator />
+            <PuzzleTools type="battleship" value={{type:'battleship',size:gridSize,grid,clues}} active={!solved} onReset={resetPuzzle} onRestore={saved=>{if(saved.type!=='battleship')return;restorePending.current=saved.size!==gridSize?saved:null;setGridSize(saved.size);setGrid(saved.grid);setClues(saved.clues);setSolution(null);setSolved(false);}} />
 
             {/* Puzzle Grid */}
             <div className="flex justify-center">
