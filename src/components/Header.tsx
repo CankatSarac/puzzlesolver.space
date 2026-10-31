@@ -7,16 +7,16 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-canvas/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <Link href="/" className="flex items-center gap-2.5 font-display text-lg font-bold text-ink">
+        <Link href="/" aria-label="PuzzleSolver home" className="flex shrink-0 items-center gap-2.5 font-display text-lg font-bold text-ink">
           <Image
             src="/logo.png"
-            alt="PuzzleSolver logo"
+            alt=""
             width={36}
             height={36}
             priority
             className="h-9 w-9 rounded-lg"
           />
-          <span>
+          <span className="hidden sm:inline">
             Puzzle<span className="text-rose-500">Solver</span>
           </span>
         </Link>
@@ -27,6 +27,7 @@ export function Header() {
           >
             Solvers
           </Link>
+          <Link href="/learn" className="rounded-full px-3 py-2 text-sm font-medium text-subtle hover:text-ink">Learn</Link>
           <a
             href={SITE.links.github}
             target="_blank"

@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { SITE } from "@/data/site"
 import { solveSlitherlink, type EdgeState } from "./slitherlink-solver"
 
+import { PuzzleTools } from '@/learning/PuzzleTools';
+
 type Grid = (number | string | null)[][]
 type HorizontalEdges = EdgeState[][]
 type VerticalEdges = EdgeState[][]
@@ -640,6 +642,7 @@ export default function SlitherlinkSolver() {
             )}
 
             <Separator />
+            <PuzzleTools type="slitherlink" value={{type:'slitherlink',size:gridSize,grid,horizontal:drawnHorizontal,vertical:drawnVertical}} active={!solved && !isLoading} onReset={resetPuzzle} onRestore={saved=>{if(saved.type!=='slitherlink')return;setGridSize(saved.size);setGrid(saved.grid);setDrawnHorizontal(saved.horizontal);setDrawnVertical(saved.vertical);dropSolution();setNotification(null);}} />
 
             {/* Puzzle Grid. Scrolls inside this box (from the first column) if a screen is too narrow
                 for the smallest board scale. */}
@@ -838,7 +841,7 @@ export default function SlitherlinkSolver() {
                   <p>• Numbers in cells show how many edges around that cell are part of the loop</p>
                   <p>• Click edges to cycle through: empty → line → cross → empty</p>
                   <p>• Lines are part of the loop, crosses mark edges that are NOT part of the loop</p>
-                  <p>• Enter numbers (0-4) for clues, 's' for inside loop, 'w' for outside loop</p>
+                  <p>• Enter numbers (0-4) for clues, &apos;s&apos; for inside loop, &apos;w&apos; for outside loop</p>
                   <p>• The loop must be continuous with no branches or isolated segments</p>
                   <p>
                     • Click &quot;Solve Puzzle&quot; to find the loop. Lines and crosses you have drawn are kept;

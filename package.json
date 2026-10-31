@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "test:learning": "node --experimental-strip-types --test src/learning/puzzle.test.mjs",
+    "test:ui": "node tests/run-learning-ui.cjs"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.7",
@@ -31,6 +33,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "^16.2.9",
+    "jsdom": "26.1.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"

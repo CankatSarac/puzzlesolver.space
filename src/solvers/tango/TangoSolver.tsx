@@ -10,6 +10,8 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { SITE } from "@/data/site"
 
+import { PuzzleTools } from '@/learning/PuzzleTools';
+
 type Symbol = "sun" | "moon" | null
 type Constraint = "equals" | "different" | null
 type Grid = Symbol[][]
@@ -750,6 +752,7 @@ export default function TangoSolver() {
             )}
 
             <Separator />
+            <PuzzleTools type="tango" value={{type:'tango',size:gridSize,board}} active={!solved && !isLoading} onReset={resetPuzzle} onRestore={saved=>{if(saved.type!=='tango')return;setGridSize(saved.size);setBoard(saved.board);setAllSolutions([]);setSolutionCount(0);setShowAllSolutions(false);setSolutionsCapped(false);setNotification(null);setSolved(false);}} />
 
             {/* Puzzle Grid. One CSS grid (cells + constraint tracks) whose cell tracks shrink
                 on phones; if a screen is still too narrow it scrolls inside this box from column 1. */}

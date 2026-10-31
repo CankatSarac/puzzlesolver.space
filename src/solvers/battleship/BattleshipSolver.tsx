@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { SITE } from "@/data/site"
 import { solveBattleshipPuzzle, formatBattleshipSolution, type BattleshipPuzzle } from "./battleship-solver"
 
+import { PuzzleTools } from '@/learning/PuzzleTools';
+
 type Grid = string[][]
 type Clues = {
   left: (number | null)[] // Row counts
@@ -57,7 +59,7 @@ export default function BattleshipSolver() {
   const [grid, setGrid] = useState<Grid>(() => emptyGrid(DEFAULT_GRID_SIZE))
   const [clues, setClues] = useState<Clues>(() => emptyClues(DEFAULT_GRID_SIZE))
   const [solved, setSolved] = useState(false)
-  const [solution, setSolution] = useState<any>(null)
+  const [, setSolution] = useState<unknown>(null)
   const [showControls, setShowControls] = useState(true)
   const [solving, setSolving] = useState(false)
   const [status, setStatus] = useState<{ tone: "success" | "info" | "error"; text: string } | null>(null)
@@ -249,6 +251,7 @@ export default function BattleshipSolver() {
             </div>
 
             <Separator />
+            <PuzzleTools type="battleship" value={{type:'battleship',size:gridSize,grid,clues}} active={!solved && !solving} onReset={resetPuzzle} onRestore={saved=>{if(saved.type!=='battleship')return;setGridSize(saved.size);setGrid(saved.grid);setClues(saved.clues);setSolution(null);setStatus(null);setSolved(false);}} />
 
             {/* Puzzle Grid. Boxes shrink a little on phones; anything still too wide
                 scrolls inside this box, starting from the clue column. */}
@@ -352,7 +355,7 @@ export default function BattleshipSolver() {
                   <p>• Standard fleet: 1×4 battleship, 2×3 cruisers, 3×2 destroyers, 4×1 submarines</p>
                   <p>• Numbers around the edge show how many ship segments are in that row/column</p>
                   <p>• Ship symbols: ● (single), ▲▼ (vertical ends), ◄► (horizontal ends), ■ (middle), ~ (water)</p>
-                  <p>• Click "Solve Puzzle" to automatically solve the current puzzle</p>
+                  <p>• Click &quot;Solve Puzzle&quot; to automatically solve the current puzzle</p>
                 </CardContent>
               </Card>
             )}

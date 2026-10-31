@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-29",
+  "device": "Portfolio UX QA 20261027 / 8D248B9D-2B8E-4CE3-82AB-9B928F0C6685",
+  "sourceSha256": "0786d3a5d3fc5c4b13488686ac97c8e61726f028bc28b965ce8328b900578444",
+  "regression": "Previously a reviewed board could be edited and restored to its old bytes, reviving old consent. The review identity now changes for every committed board or editable-state transition.",
+  "validation": [
+    "Regression reproduced against prior source; updated jsdom UI test passes, including original four solver integrations.",
+    "12 Node logic tests, TypeScript, changed-source ESLint, and isolated webpack production build pass.",
+    "One iOS Safari XCUITest passed against actual PuzzleTools in a disposable local QA page: consent, fictional change, restore, fresh consent."
+  ],
+  "evidence": [
+    "PuzzleReviewConsentUITests.swift",
+    "PuzzleReviewFixture.tsx",
+    "review-consent-summary.json",
+    "review-consent-run.log",
+    "review-consent-build.log"
+  ],
+  "limitations": [
+    "Two initial automation attempts failed on selector types before reaching the consent assertion; logs retained.",
+    "The QA fixture controls board changes directly and uses no clipboard, real recipient, or saved user board.",
+    "The simulator check exercises a disposable development server; the separate production build passed but was not tested in that session."
+  ]
+}
