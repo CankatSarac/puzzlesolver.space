@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -10,8 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { solveSkyscraperPuzzle, type Clues, type Solution } from "./skyscraper-solver";
 
 type ClueSide = keyof Clues;
-
-const SIDES: ClueSide[] = ["top", "bottom", "left", "right"];
 
 function emptyClues(size: number): Clues {
   return {
@@ -32,6 +31,7 @@ const EXAMPLE_4: Clues = {
 };
 
 export default function SkyscraperSolver() {
+  const t = useTranslations("skyscraper");
   const [isHydrated, setIsHydrated] = useState(false);
   const [size, setSize] = useState(4);
   const [clues, setClues] = useState<Clues>(() => emptyClues(4));
@@ -73,13 +73,13 @@ export default function SkyscraperSolver() {
         setIndex(0);
         setMessage(
           found.length === 0
-            ? "No solution found. Check that the clues are consistent."
+            ? t("msg_none")
             : found.length >= 10
-              ? "Found 10+ solutions (showing the first 10) — add more clues to narrow it down."
-              : `Found ${found.length} solution${found.length > 1 ? "s" : ""}.`
+              ? t("msg_many")
+              : t("msg_count", { count: found.length })
         );
       } catch {
-        setMessage("Something went wrong while solving. Please review the clues.");
+        setMessage(t("msg_error"));
       } finally {
         setSolving(false);
       }
@@ -139,7 +139,7 @@ export default function SkyscraperSolver() {
   if (!isHydrated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-600">Loading skyscraper solver…</p>
+        <p className="text-gray-600">{t("loading")}</p>
       </div>
     );
   }
@@ -148,20 +148,17 @@ export default function SkyscraperSolver() {
     <div className="min-h-screen bg-gray-50 px-4 py-10">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">Skyscraper Puzzle Solver</h1>
-          <p className="mt-2 text-gray-600">
-            Enter the edge clues — each counts how many skyscrapers are visible from that side —
-            and solve the grid automatically.
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">{t("title")}</h1>
+          <p className="mt-2 text-gray-600">{t("description")}</p>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between gap-3">
-              <span>Puzzle</span>
+              <span>{t("puzzle")}</span>
               {solutions.length > 0 && (
                 <Badge variant="secondary">
-                  Solution {index + 1} / {solutions.length}
+                  {t("solution_badge", { current: index + 1, total: solutions.length })}
                 </Badge>
               )}
             </CardTitle>
@@ -169,7 +166,7 @@ export default function SkyscraperSolver() {
           <CardContent className="space-y-6">
             <div className="flex flex-wrap items-end gap-4">
               <div className="space-y-1.5">
-                <Label>Grid size</Label>
+                <Label>{t("grid_size_label")}</Label>
                 <Select value={String(size)} onValueChange={(v) => resetTo(Number.parseInt(v, 10))}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
@@ -184,10 +181,10 @@ export default function SkyscraperSolver() {
                 </Select>
               </div>
               <Button variant="outline" onClick={() => resetTo(4, EXAMPLE_4)}>
-                Load 4×4 example
+                {t("load_example")}
               </Button>
               <Button variant="outline" onClick={() => resetTo(size)}>
-                Clear
+                {t("clear")}
               </Button>
             </div>
 
@@ -204,7 +201,7 @@ export default function SkyscraperSolver() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button onClick={handleSolve} disabled={solving} className="bg-amber-600 hover:bg-amber-700">
-                {solving ? "Solving…" : "Solve puzzle"}
+                {solving ? t("solving") : t("solve")}
               </Button>
               {solutions.length > 1 && (
                 <div className="flex items-center gap-2">
@@ -214,7 +211,7 @@ export default function SkyscraperSolver() {
                     onClick={() => setIndex((i) => Math.max(0, i - 1))}
                     disabled={index === 0}
                   >
-                    Previous
+                    {t("previous")}
                   </Button>
                   <Button
                     variant="outline"
@@ -222,7 +219,7 @@ export default function SkyscraperSolver() {
                     onClick={() => setIndex((i) => Math.min(solutions.length - 1, i + 1))}
                     disabled={index === solutions.length - 1}
                   >
-                    Next
+                    {t("next")}
                   </Button>
                 </div>
               )}
@@ -242,12 +239,12 @@ export default function SkyscraperSolver() {
 
         <Card>
           <CardHeader>
-            <CardTitle>How to play</CardTitle>
+            <CardTitle>{t("howto_title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-gray-600">
-            <p>• Fill the grid with heights 1–{size}, each used once per row and column.</p>
-            <p>• A clue counts how many buildings are visible from that edge — taller ones hide shorter ones behind them.</p>
-            <p>• Leave a clue blank if it is not given. {SIDES.length} edges are supported: top, bottom, left, right.</p>
+            <p>• {t("howto_fill", { size })}</p>
+            <p>• {t("howto_clue")}</p>
+            <p>• {t("howto_blank")}</p>
           </CardContent>
         </Card>
       </div>

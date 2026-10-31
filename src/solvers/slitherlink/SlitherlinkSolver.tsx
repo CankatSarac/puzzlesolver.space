@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,6 +16,16 @@ type HorizontalEdges = EdgeState[][]
 type VerticalEdges = EdgeState[][]
 
 export default function SlitherlinkSolver() {
+  const t = useTranslations("slitherlink")
+  const tc = useTranslations("solverCommon")
+  // Localize an example label ("Easy"/"Classic"/"Medium" plus size) for the toast.
+  const localizedExampleName = (name: string, size: number) => {
+    const lower = name.toLowerCase()
+    if (lower.startsWith("classic")) return tc("example_classic", { size })
+    if (lower.startsWith("medium")) return tc("example_medium", { size })
+    return tc("example_easy", { size })
+  }
+
   // Add hydration state to prevent hydration mismatches
   const [isHydrated, setIsHydrated] = useState(false)
 
@@ -158,8 +169,8 @@ export default function SlitherlinkSolver() {
           if (!wasExampleLoaded) {
             showNotification(
               "error",
-              "Unsolvable Puzzle",
-              "This puzzle appears to be unsolvable. Please check your clues and try again.",
+              t("notif_unsolvable_title"),
+              t("notif_unsolvable_msg"),
             )
           }
         }
@@ -182,7 +193,7 @@ export default function SlitherlinkSolver() {
       }
 
       if (!wasExampleLoaded) {
-        showNotification("error", "Solver Error", "An error occurred while solving the puzzle. Please try again.")
+        showNotification("error", t("notif_error_title"), t("notif_error_msg"))
       }
       return false
     }
@@ -425,7 +436,7 @@ export default function SlitherlinkSolver() {
       setWasExampleLoaded(true)
 
       setTimeout(() => {
-        showNotification("success", "Example Loaded", `Successfully loaded: ${example.name}`)
+        showNotification("success", t("notif_example_title"), t("notif_example_msg", { name: localizedExampleName(example.name, example.grid.length) }))
       }, 100)
 
       setTimeout(() => {
@@ -473,13 +484,13 @@ export default function SlitherlinkSolver() {
       navigator.clipboard
         .writeText(gridString)
         .then(() => {
-          showNotification("success", "Copied!", "Grid has been copied to clipboard")
+          showNotification("success", t("notif_copied_title"), t("notif_copied_msg"))
         })
         .catch(() => {
-          showNotification("error", "Copy Failed", "Failed to copy grid to clipboard")
+          showNotification("error", t("notif_copy_failed_title"), t("notif_copy_failed_msg"))
         })
     } else {
-      showNotification("error", "Copy Failed", "Clipboard not available in this browser")
+      showNotification("error", t("notif_copy_failed_title"), t("notif_clipboard_unavailable_msg"))
     }
   }
 
@@ -489,7 +500,7 @@ export default function SlitherlinkSolver() {
       <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading puzzle solver...</p>
+          <p className="text-gray-600">{t("loading")}</p>
         </div>
       </div>
     )
@@ -500,19 +511,15 @@ export default function SlitherlinkSolver() {
       <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold">Slitherlink Puzzle Solver</CardTitle>
-            <p className="text-gray-600">
-              Free online Slitherlink puzzle solver with interactive grid. Draw a single continuous loop where number
-              clues indicate how many edges around each cell are part of the loop. Click edges to draw lines or mark
-              with X.
-            </p>
+            <CardTitle className="text-3xl font-bold">{t("title")}</CardTitle>
+            <p className="text-gray-600">{t("description")}</p>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {/* Controls */}
             <div className="flex flex-wrap gap-4 justify-center items-center">
               <div className="flex items-center gap-2">
-                <Label htmlFor="grid-size">Grid Size:</Label>
+                <Label htmlFor="grid-size">{tc("grid_size_label")}</Label>
                 <Select value={gridSize.toString()} onValueChange={(value) => setGridSize(Number.parseInt(value))}>
                   <SelectTrigger className="w-20">
                     <SelectValue />
@@ -531,15 +538,15 @@ export default function SlitherlinkSolver() {
                 disabled={isLoading}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {isLoading ? "Solving..." : "🧩 Solve Puzzle"}
+                {isLoading ? t("solving") : t("solve")}
               </Button>
 
               <Button onClick={resetPuzzle} variant="outline">
-                🔄 Reset
+                {t("reset")}
               </Button>
 
               <Button onClick={() => setShowControls(!showControls)} variant="outline">
-                {showControls ? "👁️ Hide" : "👁️ Show"} Controls
+                {showControls ? t("controls_hide") : t("controls_show")}
               </Button>
 
               <div className="flex gap-2">
@@ -548,7 +555,7 @@ export default function SlitherlinkSolver() {
                   variant="outline"
                   className="bg-green-50 hover:bg-green-100 border-green-300"
                 >
-                  📝 Load Example
+                  {t("load_example")}
                 </Button>
                 {getExamplePuzzles().length > 1 && (
                   <Button
@@ -557,13 +564,13 @@ export default function SlitherlinkSolver() {
                     size="sm"
                     className="bg-green-50 hover:bg-green-100 border-green-300"
                   >
-                    ⏭️ Next Example
+                    {t("next_example")}
                   </Button>
                 )}
               </div>
 
               <Button onClick={copyToClipboard} variant="outline">
-                📋 Copy Grid
+                {t("copy_grid")}
               </Button>
             </div>
 
@@ -605,26 +612,26 @@ export default function SlitherlinkSolver() {
             {solved && (
               <div className="text-center space-y-4">
                 <Badge variant="default" className="text-lg px-4 py-2 bg-green-600">
-                  ✅ Puzzle Solved!
+                  {t("solved_badge")}
                 </Badge>
 
                 {solutionCount > 1 && (
                   <div className="space-y-3">
                     <Badge variant="secondary" className="text-sm px-3 py-1">
-                      🔢 {solutionCount} solution{solutionCount > 1 ? "s" : ""} found
+                      {t("solutions_found", { count: solutionCount })}
                     </Badge>
 
                     {solutionCount >= 13 && (
                       <div className="space-y-2">
                         <p className="text-sm text-orange-600 font-medium">
-                          ⚠️ Multiple solutions detected! This puzzle may need additional clues for uniqueness.
+                          {t("multiple_warning")}
                         </p>
                         <Button
                           onClick={toggleAllSolutions}
                           variant="outline"
                           className="bg-orange-50 hover:bg-orange-100 border-orange-300"
                         >
-                          {showAllSolutions ? "🔽 Hide All Solutions" : "🔼 View All Solutions"}
+                          {showAllSolutions ? t("hide_all") : t("view_all")}
                         </Button>
                       </div>
                     )}
@@ -637,10 +644,10 @@ export default function SlitherlinkSolver() {
                           size="sm"
                           disabled={allSolutions.length <= 1}
                         >
-                          ⬅️ Previous
+                          {t("previous")}
                         </Button>
                         <span className="text-sm px-3 py-1 bg-gray-100 rounded">
-                          Solution {currentSolutionIndex + 1} of {solutionCount}
+                          {tc("solution_x_of_y", { current: currentSolutionIndex + 1, total: solutionCount })}
                         </span>
                         <Button
                           onClick={nextSolution}
@@ -649,7 +656,7 @@ export default function SlitherlinkSolver() {
                           disabled={allSolutions.length <= 1}
                           className="bg-blue-50 hover:bg-blue-100 border-blue-300"
                         >
-                          ➡️ Next Solution
+                          {t("next_solution")}
                         </Button>
                       </div>
                     )}
@@ -667,33 +674,33 @@ export default function SlitherlinkSolver() {
                       <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
                         <span className="text-yellow-600 text-xl">⏱️</span>
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-900">Complex Puzzle Detected</h3>
+                      <h3 className="text-lg font-semibold text-gray-900">{t("dialog_title")}</h3>
                     </div>
 
                     <div className="space-y-4 text-sm text-gray-600">
-                      <p className="font-medium text-gray-800">This puzzle is taking longer than expected to solve.</p>
+                      <p className="font-medium text-gray-800">{t("dialog_intro")}</p>
 
                       <div className="space-y-2">
                         <p>
-                          <strong>Possible reasons:</strong>
+                          <strong>{t("dialog_reasons_label")}</strong>
                         </p>
                         <ul className="list-disc list-inside space-y-1 ml-4">
-                          <li>The puzzle has too many possible solutions (under-constrained)</li>
-                          <li>Some clues may be incorrect or contradictory</li>
-                          <li>The puzzle requires advanced loop-finding techniques</li>
-                          <li>The grid size makes it computationally intensive</li>
+                          <li>{t("dialog_reason_1")}</li>
+                          <li>{t("dialog_reason_2")}</li>
+                          <li>{t("dialog_reason_3")}</li>
+                          <li>{t("dialog_reason_4")}</li>
                         </ul>
                       </div>
 
                       <div className="space-y-2">
                         <p>
-                          <strong>Suggestions:</strong>
+                          <strong>{t("dialog_suggestions_label")}</strong>
                         </p>
                         <ul className="list-disc list-inside space-y-1 ml-4">
-                          <li>Double-check your clues for accuracy</li>
-                          <li>Try adding more number clues to constrain the solution</li>
-                          <li>Start with a smaller grid size</li>
-                          <li>Load an example puzzle to test the solver</li>
+                          <li>{t("dialog_suggestion_1")}</li>
+                          <li>{t("dialog_suggestion_2")}</li>
+                          <li>{t("dialog_suggestion_3")}</li>
+                          <li>{t("dialog_suggestion_4")}</li>
                         </ul>
                       </div>
                     </div>
@@ -707,7 +714,7 @@ export default function SlitherlinkSolver() {
                         variant="outline"
                         className="flex-1"
                       >
-                        Close
+                        {t("dialog_close")}
                       </Button>
                       <Button
                         onClick={() => {
@@ -717,7 +724,7 @@ export default function SlitherlinkSolver() {
                         }}
                         className="flex-1 bg-green-600 hover:bg-green-700"
                       >
-                        Try Example
+                        {t("dialog_try_example")}
                       </Button>
                     </div>
                   </div>
@@ -890,7 +897,7 @@ export default function SlitherlinkSolver() {
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader>
                   <CardTitle className="text-lg text-blue-800 flex items-center gap-2">
-                    🔢 All {solutionCount} Solutions
+                    {t("all_solutions_title", { count: solutionCount })}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -899,7 +906,7 @@ export default function SlitherlinkSolver() {
                       <div key={index} className="space-y-2">
                         <div className="text-center">
                           <Badge variant="outline" className="text-xs">
-                            Solution {index + 1}
+                            {tc("solution_n", { n: index + 1 })}
                           </Badge>
                         </div>
                         <div className="inline-block border-2 border-gray-300 rounded p-2 bg-white">
@@ -962,7 +969,7 @@ export default function SlitherlinkSolver() {
                             size="sm"
                             className="text-xs"
                           >
-                            Use This Solution
+                            {t("use_this_solution")}
                           </Button>
                         </div>
                       </div>
@@ -976,16 +983,16 @@ export default function SlitherlinkSolver() {
             {showControls && (
               <Card className="bg-blue-50">
                 <CardHeader>
-                  <CardTitle className="text-lg">How to Play</CardTitle>
+                  <CardTitle className="text-lg">{t("howto_title")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <p>• Draw a single continuous loop by connecting dots</p>
-                  <p>• Numbers in cells show how many edges around that cell are part of the loop</p>
-                  <p>• Click edges to cycle through: empty → line → cross → empty</p>
-                  <p>• Lines are part of the loop, crosses mark edges that are NOT part of the loop</p>
-                  <p>• Enter numbers (0-4) for clues, 's' for inside loop, 'w' for outside loop</p>
-                  <p>• The loop must be continuous with no branches or isolated segments</p>
-                  <p>• Click "Solve Puzzle" to automatically solve the current puzzle</p>
+                  <p>• {t("howto_loop")}</p>
+                  <p>• {t("howto_numbers")}</p>
+                  <p>• {t("howto_cycle")}</p>
+                  <p>• {t("howto_lines")}</p>
+                  <p>• {t("howto_input")}</p>
+                  <p>• {t("howto_continuous")}</p>
+                  <p>• {t("howto_click_solve")}</p>
                 </CardContent>
               </Card>
             )}
@@ -993,12 +1000,10 @@ export default function SlitherlinkSolver() {
             {/* Developer Contact Section */}
             <Card className="bg-gray-100 border-gray-200">
               <CardHeader>
-                <CardTitle className="text-lg text-center">About the Developer</CardTitle>
+                <CardTitle className="text-lg text-center">{t("about_title")}</CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-4">
-                <p className="text-gray-600">
-                  This Slitherlink puzzle solver was created with passion for puzzle games and web development.
-                </p>
+                <p className="text-gray-600">{t("about_note1")}</p>
                 <div className="flex justify-center gap-4 flex-wrap">
                   <Button
                     variant="outline"
@@ -1008,7 +1013,7 @@ export default function SlitherlinkSolver() {
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                     </svg>
-                    Connect on LinkedIn
+                    {t("connect_linkedin")}
                   </Button>
                   <Button
                     variant="outline"
@@ -1018,12 +1023,10 @@ export default function SlitherlinkSolver() {
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M20.216 6.415l-.132-.666c-.119-.598-.388-1.163-.766-1.613a4.44 4.44 0 0 0-1.364-1.04c-.476-.275-1.039-.428-1.612-.428-.297 0-.583.034-.863.1-.274.065-.54.159-.795.275-.255.117-.49.256-.713.416-.222.16-.425.344-.61.548a2.8 2.8 0 0 0-.438.65 18.84 18.84 0 0 0-.401.968c-.074.204-.12.417-.138.632-.018.218-.006.438.038.649.044.21.123.413.232.598.109.185.249.35-.417.49-.17.14-.363.25-.577.327-.214.077-.448.118.683.118-.235 0-.469-.041-.683-.118-.214-.077-.407-.187-.577-.327-.168-.14-.308-.305-.417-.49-.109-.185-.188-.388-.232-.598-.044-.211-.056-.431-.038-.649.018-.215.064-.428.138-.632z" />
                     </svg>
-                    Buy Me a Coffee
+                    {t("buy_me_a_coffee")}
                   </Button>
                 </div>
-                <p className="text-sm text-gray-500">
-                  If you enjoy this puzzle solver, consider connecting or supporting future development!
-                </p>
+                <p className="text-sm text-gray-500">{t("about_note2")}</p>
               </CardContent>
             </Card>
           </CardContent>

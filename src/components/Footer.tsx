@@ -1,42 +1,47 @@
 import Image from "next/image";
 import { Coffee, Github, Linkedin, Twitter } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { SITE } from "@/data/site";
 
-export function Footer() {
+export async function Footer() {
+  const t = await getTranslations("footer");
   const year = new Date().getFullYear();
   return (
     <footer className="mt-12 border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-5 py-10 sm:flex-row sm:justify-between">
         <div className="text-center sm:text-left">
           <a href="#top" className="inline-flex items-center gap-2 font-display text-lg font-bold text-ink">
-            <Image src="/logo.png" alt="PuzzleSolver logo" width={28} height={28} className="h-7 w-7 rounded-md" />
+            <Image src="/logo.png" alt={t("logo_alt")} width={28} height={28} className="h-7 w-7 rounded-md" />
             Puzzle<span className="text-rose-500">Solver</span>
           </a>
           <p className="mt-1 text-sm text-subtle">
-            Built by{" "}
-            <a
-              href={SITE.links.linkedin}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-ink underline-offset-2 hover:underline"
-            >
-              {SITE.author}
-            </a>
-            . © {year}
+            {t.rich("credit", {
+              year,
+              author: () => (
+                <a
+                  href={SITE.links.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-ink underline-offset-2 hover:underline"
+                >
+                  {SITE.author}
+                </a>
+              ),
+            })}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <FooterIcon href={SITE.links.github} label="GitHub">
+          <FooterIcon href={SITE.links.github} label={t("github_aria")}>
             <Github size={18} />
           </FooterIcon>
-          <FooterIcon href={SITE.links.linkedin} label="LinkedIn">
+          <FooterIcon href={SITE.links.linkedin} label={t("linkedin_aria")}>
             <Linkedin size={18} />
           </FooterIcon>
-          <FooterIcon href={SITE.links.twitter} label="X / Twitter">
+          <FooterIcon href={SITE.links.twitter} label={t("twitter_aria")}>
             <Twitter size={18} />
           </FooterIcon>
-          <FooterIcon href={SITE.links.buyMeACoffee} label="Buy me a coffee">
+          <FooterIcon href={SITE.links.buyMeACoffee} label={t("coffee_aria")}>
             <Coffee size={18} />
           </FooterIcon>
         </div>
@@ -45,10 +50,10 @@ export function Footer() {
       <div className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-x-5 gap-y-2 px-5 py-4 text-sm text-subtle sm:justify-end">
           <a href={SITE.links.privacy} className="hover:text-ink">
-            Privacy
+            {t("privacy")}
           </a>
           <a href={SITE.links.terms} className="hover:text-ink">
-            Terms
+            {t("terms")}
           </a>
         </div>
       </div>

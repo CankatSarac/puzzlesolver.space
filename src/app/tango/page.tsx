@@ -1,20 +1,24 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Header } from "@/components/Header";
 import TangoSolver from "@/solvers/tango/TangoSolver";
 
-export const metadata: Metadata = {
-  title: "Tango Puzzle Solver — Free Online LinkedIn Tango Solver",
-  description:
-    "Solve LinkedIn's Tango puzzle instantly. Fill the grid with suns and moons under the balance, no-three-in-a-row, and =/≠ constraints — all solutions found automatically.",
-  alternates: { canonical: "/tango" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
+  return {
+    title: t("tango_title"),
+    description: t("tango_description"),
+    alternates: { canonical: "/tango" },
+  };
+}
 
-export default function TangoPage() {
+export default async function TangoPage() {
+  const t = await getTranslations("metadata");
   return (
     <>
       <Header />
       <main>
-        <h1 className="sr-only">Tango Puzzle Solver</h1>
+        <h1 className="sr-only">{t("tango_h1")}</h1>
         <TangoSolver />
       </main>
     </>

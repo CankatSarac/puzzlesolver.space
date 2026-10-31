@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Lock } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import { PUZZLE_ICONS } from "@/components/PuzzleIcons";
 import type { Solver } from "@/data/solvers";
@@ -14,6 +15,8 @@ type AccentStyle = CSSProperties & {
 
 export function SolverCard({ solver }: { solver: Solver }) {
   const reduce = useReducedMotion();
+  const t = useTranslations("solverCard");
+  const tSolvers = useTranslations("solvers");
   const isAvailable = solver.status === "available";
   const Icon = PUZZLE_ICONS[solver.iconId];
   const style: AccentStyle = {
@@ -46,27 +49,27 @@ export function SolverCard({ solver }: { solver: Solver }) {
             className="rounded-full px-3 py-1 text-xs font-semibold"
             style={{ color: solver.accentText, backgroundColor: solver.accentTint }}
           >
-            Available
+            {t("available")}
           </span>
         ) : (
           <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-subtle">
             <Lock size={11} />
-            Coming soon
+            {t("coming_soon")}
           </span>
         )}
       </div>
 
       <h3 className="mt-5 font-display text-2xl font-bold text-ink">{solver.name}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-subtle">{solver.tagline}</p>
+      <p className="mt-2 text-sm leading-relaxed text-subtle">{tSolvers(`${solver.id}.tagline`)}</p>
 
       <div className="mt-6 flex items-center gap-1.5 text-sm font-semibold">
         {isAvailable ? (
           <span className="flex items-center gap-1.5" style={{ color: solver.accentText }}>
-            Open solver
+            {t("open_solver")}
             <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-1" />
           </span>
         ) : (
-          <span className="text-subtle">In development</span>
+          <span className="text-subtle">{t("in_development")}</span>
         )}
       </div>
     </>
