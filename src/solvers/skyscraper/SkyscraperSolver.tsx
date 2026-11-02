@@ -9,6 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { solveSkyscraperPuzzle, type Clues, type Solution } from "./skyscraper-solver";
 
+import { PuzzleTools } from '@/learning/PuzzleTools';
+
 type ClueSide = keyof Clues;
 
 const SIDES: ClueSide[] = ["top", "bottom", "left", "right"];
@@ -35,6 +37,7 @@ export default function SkyscraperSolver() {
   const [isHydrated, setIsHydrated] = useState(false);
   const [size, setSize] = useState(4);
   const [clues, setClues] = useState<Clues>(() => emptyClues(4));
+  const [learningGrid,setLearningGrid]=useState<(number|null)[][]>(()=>Array.from({length:4},()=>Array(4).fill(null)));
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [index, setIndex] = useState(0);
   const [solving, setSolving] = useState(false);
@@ -43,6 +46,7 @@ export default function SkyscraperSolver() {
   useEffect(() => setIsHydrated(true), []);
 
   const resetTo = useCallback((nextSize: number, nextClues?: Clues) => {
+    setLearningGrid(Array.from({length:nextSize},()=>Array(nextSize).fill(null)));
     setSize(nextSize);
     setClues(nextClues ?? emptyClues(nextSize));
     setSolutions([]);
@@ -53,6 +57,7 @@ export default function SkyscraperSolver() {
   const setClue = (side: ClueSide, i: number, raw: string) => {
     const n = raw.trim() === "" ? null : Number.parseInt(raw, 10);
     const value = n !== null && Number.isFinite(n) && n >= 1 && n <= size ? n : null;
+    setLearningGrid(Array.from({length:size},()=>Array(size).fill(null)));
     setClues((prev) => {
       const next = { ...prev, [side]: [...prev[side]] };
       next[side][i] = value;
@@ -86,7 +91,7 @@ export default function SkyscraperSolver() {
     }, 20);
   };
 
-  const current = solutions[index]?.grid ?? null;
+  const current = solutions[index]?.grid ?? learningGrid;
 
   // Build a (size+2) grid template: clue gutters around the board.
   const dim = size + 2;
@@ -167,6 +172,7 @@ export default function SkyscraperSolver() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+
             <div className="flex flex-wrap items-end gap-4">
               <div className="space-y-1.5">
                 <Label>Grid size</Label>
@@ -192,6 +198,7 @@ export default function SkyscraperSolver() {
             </div>
 
             <Separator />
+            <PuzzleTools type="skyscraper" value={{type:'skyscraper',size,clues,grid:learningGrid}} active={!solving && solutions.length===0} onReset={()=>resetTo(size)} onRestore={saved=>{if(saved.type!=='skyscraper')return;setSize(saved.size);setClues(saved.clues);setLearningGrid(saved.grid);setSolutions([]);setIndex(0);setMessage(null);}} />
 
             <div className="flex justify-center overflow-x-auto py-2">
               <div

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,12 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 
+import { PuzzleTools } from '@/learning/PuzzleTools';
+import type { PuzzleState } from '@/learning/puzzle';
+
 type Grid = (number | string | null)[][]
 type EdgeState = "empty" | "line" | "cross"
 type HorizontalEdges = EdgeState[][]
 type VerticalEdges = EdgeState[][]
 
 export default function SlitherlinkSolver() {
+  const restorePending = useRef<Extract<PuzzleState,{type:'slitherlink'}> | null>(null);
   // Add hydration state to prevent hydration mismatches
   const [isHydrated, setIsHydrated] = useState(false)
 
@@ -56,6 +60,7 @@ export default function SlitherlinkSolver() {
 
   // Initialize grid and edges
   const initializeGrid = useCallback(() => {
+    if (restorePending.current) { const saved=restorePending.current; restorePending.current=null; setGrid(saved.grid);setHorizontalEdges(saved.horizontal);setVerticalEdges(saved.vertical);setSolved(false);return; }
     const newGrid: Grid = Array(gridSize)
       .fill(null)
       .map(() => Array(gridSize).fill(null))
@@ -509,6 +514,7 @@ export default function SlitherlinkSolver() {
           </CardHeader>
 
           <CardContent className="space-y-6">
+
             {/* Controls */}
             <div className="flex flex-wrap gap-4 justify-center items-center">
               <div className="flex items-center gap-2">
@@ -726,6 +732,7 @@ export default function SlitherlinkSolver() {
             )}
 
             <Separator />
+            <PuzzleTools type="slitherlink" value={{type:'slitherlink',size:gridSize,grid,horizontal:horizontalEdges,vertical:verticalEdges}} active={!solved && !isLoading} onReset={resetPuzzle} onRestore={saved=>{if(saved.type!=='slitherlink')return;restorePending.current=saved.size!==gridSize?saved:null;setGridSize(saved.size);setGrid(saved.grid);setHorizontalEdges(saved.horizontal);setVerticalEdges(saved.vertical);setAllSolutions([]);setSolutionCount(0);setShowAllSolutions(false);setSolved(false);}} />
 
             {/* Puzzle Grid */}
             <div className="flex justify-center">

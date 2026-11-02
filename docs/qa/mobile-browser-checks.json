@@ -1,0 +1,133 @@
+{
+  "date": "2026-10-27",
+  "device": {
+    "name": "Portfolio UX QA 20261027",
+    "udid": "8D248B9D-2B8E-4CE3-82AB-9B928F0C6685",
+    "runtime": "iOS 26.3",
+    "browser": "Mobile Safari"
+  },
+  "environment": "Disposable source copy served locally by Next webpack development server; no deployment. SHA-256 equality verifies listed source files match the isolated worktree, not a source-map audit.",
+  "scenarios": [
+    "Rule library rendered on mobile, switched to Turkish, exposed translated diagram accessibility label, switched back and applied the worked deduction.",
+    "Tango loaded its built-in example, reported no supported deduction rather than guessing, and saved the board locally.",
+    "After Safari was terminated and reopened, the saved-board resume control appeared; resume enabled automatic saving, then confirmed reset removed the local copy and resume control."
+  ],
+  "testResultSummaries": [
+    "mobile-summary-2.json",
+    "mobile-summary-4.json",
+    "mobile-summary-6.json"
+  ],
+  "screenshots": [
+    "puzzle-library-applied.png",
+    "puzzle-library-example.png",
+    "puzzle-library-turkish.png",
+    "puzzle-tango-forgotten.png",
+    "puzzle-tango-restored.png",
+    "puzzle-tango-saved.png"
+  ],
+  "sourceHashes": {
+    "src/learning/HintDiagram.tsx": "7ed7722f1bfcffd59912f63ef2803b564c60eedabec18ff446177ee76134d01b",
+    "src/learning/PuzzleTools.tsx": "00d39327f9a6b9a13133fcd26edcde52e29e7c6d69b6b1cd9676b7dfacec495c",
+    "src/learning/LearningLibrary.tsx": "1c2d4e6557f1dc33873b414e8bf0c8824945553d4d323c9180c614cc39d7b465",
+    "src/learning/puzzle.ts": "cf9d2f2c6c25c60f6e341073803462a8f304a10f9b0b29b2290f721a51034e93",
+    "src/learning/examples.ts": "4e699f24f2475e5bd561d282bb353117c6c39eec0dcb3cef8af117a6d5ae1ffe",
+    "src/solvers/tango/TangoSolver.tsx": "d330ed057b615174820c3dfcc190dce5d1f72020ce36ddc6bf9b35d533faa98b",
+    "src/app/learn/page.tsx": "01d3fb81b2cde928079fbd56f647c73cc2a28f1e1dec6ed1d5f629bf27b2a021"
+  },
+  "automatedChecks": [
+    "12 logic tests passed",
+    "jsdom/React interaction checks for all four solvers passed, including Turkish diagram label",
+    "TypeScript and changed learning component lint passed",
+    "Next 16.2.9 webpack production build passed after the Turkish label change; separate TypeScript and lint checks passed",
+    "Header TypeScript and targeted ESLint passed after mobile layout adjustment; subsequent webpack production build passed"
+  ],
+  "boundaries": [
+    "Targeted Safari cases, not full browser or all four solver acceptance",
+    "No real clipboard, recipient, quota, VoiceOver traversal, Android, or production deployment tested",
+    "The QA board was removed via app UI; test runner and disposable server removed after test"
+  ],
+  "productionBuild": {
+    "result": "passed",
+    "command": "npm run build -- --webpack",
+    "environment": "Disposable source copy with linked existing dependencies; disk guard 300 MiB; build passed after header change; Next skipped type validation, which passed separately",
+    "log": "production-build-webpack.log",
+    "verifiedSourceHashes": {
+      "src/learning/HintDiagram.tsx": "7ed7722f1bfcffd59912f63ef2803b564c60eedabec18ff446177ee76134d01b",
+      "src/learning/PuzzleTools.tsx": "00d39327f9a6b9a13133fcd26edcde52e29e7c6d69b6b1cd9676b7dfacec495c",
+      "src/learning/LearningLibrary.tsx": "1c2d4e6557f1dc33873b414e8bf0c8824945553d4d323c9180c614cc39d7b465",
+      "src/learning/puzzle.ts": "cf9d2f2c6c25c60f6e341073803462a8f304a10f9b0b29b2290f721a51034e93",
+      "src/learning/examples.ts": "4e699f24f2475e5bd561d282bb353117c6c39eec0dcb3cef8af117a6d5ae1ffe",
+      "src/solvers/tango/TangoSolver.tsx": "d330ed057b615174820c3dfcc190dce5d1f72020ce36ddc6bf9b35d533faa98b",
+      "src/app/learn/page.tsx": "01d3fb81b2cde928079fbd56f647c73cc2a28f1e1dec6ed1d5f629bf27b2a021",
+      "package.json": "b5a03e08543103fabf99ae78dbeb5b59a51561ba305de862b419a6b88181ce6d",
+      "next.config.ts": "95cf9b638777730377639cb69337320c1172939965e95b3ede66952df4673fad",
+      "src/components/Header.tsx": "9b725c5282bea6d2ccef2b71a18f343ffb2614d79707079477e182781f634328"
+    }
+  },
+  "additionalScenarios": {
+    "device": "8D248B9D-2B8E-4CE3-82AB-9B928F0C6685",
+    "passed": [
+      "Skyscraper empty board reported no supported deduction; save, resume and confirmed removal passed in same session",
+      "Slitherlink example reported no supported deduction; save, resume and confirmed removal passed in same session",
+      "Narrow-screen header has non-overlapping home, Solvers and Learn link frames; screenshot visually reviewed"
+    ],
+    "inconclusive": [
+      "Battleship example produced a diagonal-water hint and saved; after tapping resume WebKit process exited and the auto-save assertion failed. Cause not established; restart, resume and durability remain unverified. After Safari restart, the test board was removed via confirmed reset.",
+      "Initial header check incorrectly opened /learn, which has its own layout without this header; rerun on Slitherlink passed."
+    ],
+    "summaries": [
+      "mobile-battle-summary.json",
+      "mobile-cleanup2-summary.json",
+      "mobile-sky-summary.json",
+      "mobile-loop-summary.json",
+      "mobile-header-summary.json"
+    ],
+    "sourceHashes": {
+      "src/components/Header.tsx": "9b725c5282bea6d2ccef2b71a18f343ffb2614d79707079477e182781f634328",
+      "src/learning/PuzzleTools.tsx": "00d39327f9a6b9a13133fcd26edcde52e29e7c6d69b6b1cd9676b7dfacec495c",
+      "src/solvers/battleship/BattleshipSolver.tsx": "6edd35582df531e5fd08596598b7afb3e294f19d4d3adb34880d1e48fd668ac3",
+      "src/solvers/skyscraper/SkyscraperSolver.tsx": "51adb9600fd7aea776de5550744fceb6cb88c196c3b2b85f805aa18efbfa9083",
+      "src/solvers/slitherlink/SlitherlinkSolver.tsx": "9a8a49d32655deee0d09355bf9efb5eab33e19c1993966c9869e6fe2378cbdc5"
+    },
+    "crashInvestigation": {
+      "source": "macOS simulator WebKit diagnostic report, capture 2026-10-27 23:08:56 +0000",
+      "device": "8D248B9D-2B8E-4CE3-82AB-9B928F0C6685",
+      "process": "com.apple.WebKit.WebContent",
+      "pid": 86529,
+      "exception": "EXC_BAD_ACCESS / SIGBUS / KERN_PROTECTION_FAILURE",
+      "topFrame": "JSC::JSRopeString::resolveToBuffer",
+      "interpretation": "This confirms a simulator WebKit process crash during the test window. It does not establish the trigger or prove that application code, the development build, or disk pressure caused it. Retest against a production build when disk space permits."
+    }
+  },
+  "productionBattleshipRetest": {
+    "date": "2026-10-28",
+    "environment": "Next 16.2.9 webpack production build and local next start, disposable source copy, real iOS Safari on task-owned simulator",
+    "passed": [
+      "Example generated diagonal-water hint; save, resume and confirmed removal passed in-session",
+      "Example saved, Safari process terminated and restarted, saved board resumed and generated same diagonal-water hint; confirmed reset removed test data"
+    ],
+    "summaries": [
+      "mobile-battle-prod-summary.json",
+      "mobile-battle-save-summary.json",
+      "mobile-battle-restore-summary.json"
+    ],
+    "screenshots": [
+      "puzzle-battleship-forgotten-production.png",
+      "puzzle-battleship-saved-production.png",
+      "puzzle-battleship-explanation-production.png",
+      "puzzle-battle-production-saved-production.png",
+      "puzzle-battle-production-forgotten-production.png",
+      "puzzle-battle-production-restored-hint-production.png"
+    ],
+    "sourceHashes": {
+      "src/components/Header.tsx": "9b725c5282bea6d2ccef2b71a18f343ffb2614d79707079477e182781f634328",
+      "src/learning/PuzzleTools.tsx": "00d39327f9a6b9a13133fcd26edcde52e29e7c6d69b6b1cd9676b7dfacec495c",
+      "src/learning/puzzle.ts": "cf9d2f2c6c25c60f6e341073803462a8f304a10f9b0b29b2290f721a51034e93",
+      "src/solvers/battleship/BattleshipSolver.tsx": "6edd35582df531e5fd08596598b7afb3e294f19d4d3adb34880d1e48fd668ac3"
+    },
+    "limits": [
+      "Earlier development-build WebKit crash remains unexplained; one production retest does not prove its root cause",
+      "No real clipboard, recipient, quota, VoiceOver, Android, or deployment acceptance"
+    ]
+  }
+}

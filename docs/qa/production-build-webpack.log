@@ -1,0 +1,39 @@
+
+> puzzlesolver-hub@1.0.0 build
+> next build --webpack
+
+▲ Next.js 16.2.9 (webpack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.9s
+  Skipping validation of types
+  Finished TypeScript config validation in 3ms ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/16) ...
+  Generating static pages using 7 workers (4/16) 
+  Generating static pages using 7 workers (8/16) 
+  Generating static pages using 7 workers (12/16) 
+✓ Generating static pages using 7 workers (16/16) in 220ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /apple-icon.png
+├ ○ /battleship
+├ ○ /icon.png
+├ ○ /learn
+├ ○ /manifest.webmanifest
+├ ○ /opengraph-image
+├ ○ /robots.txt
+├ ○ /sitemap.xml
+├ ○ /skyscraper
+├ ○ /slitherlink
+├ ○ /tango
+└ ƒ /updates.xml
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
