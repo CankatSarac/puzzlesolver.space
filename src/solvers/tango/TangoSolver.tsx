@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,6 +22,8 @@ interface TangoBoard {
 }
 
 export default function TangoSolver() {
+  const t = useTranslations("tango")
+  const tc = useTranslations("solverCommon")
   const [isHydrated, setIsHydrated] = useState(false)
   const [gridSize, setGridSize] = useState(6)
   const [board, setBoard] = useState<TangoBoard>({
@@ -276,20 +279,20 @@ export default function TangoSolver() {
         setBoard(solutions[0])
         setSolved(true)
         if (solutions.length === 1) {
-          showNotification('success', 'Puzzle Solved!', 'Found a unique solution!')
+          showNotification('success', t('notif_solved_title'), t('notif_unique_msg'))
         } else {
-          showNotification('success', 'Multiple Solutions Found!', `Found ${solutions.length} possible solutions.`)
+          showNotification('success', t('notif_multiple_title'), t('notif_multiple_msg', { count: solutions.length }))
           setShowAllSolutions(true)
         }
       } else {
-        showNotification('error', 'No Solution', 'This puzzle appears to be unsolvable with the given constraints.')
+        showNotification('error', t('notif_no_solution_title'), t('notif_no_solution_msg'))
       }
       
       setIsLoading(false)
       return solutions.length > 0
     } catch (error) {
       console.error('Error solving puzzle:', error)
-      showNotification('error', 'Solver Error', 'An error occurred while solving the puzzle. Please try again.')
+      showNotification('error', t('notif_error_title'), t('notif_error_msg'))
       setIsLoading(false)
       return false
     }
@@ -537,7 +540,7 @@ export default function TangoSolver() {
         verticalConstraints: example.verticalConstraints
       })
       setSolved(false)
-      showNotification('success', 'Example Loaded', `Successfully loaded: ${example.name}`)
+      showNotification('success', t('notif_example_title'), t('notif_example_msg', { name: tc('example_easy', { size: gridSize }) }))
     }
   }
 
@@ -548,7 +551,7 @@ export default function TangoSolver() {
     } else if (symbol === "moon") {
       return <span className="text-3xl leading-none flex items-center justify-center">🌙</span>
     }
-    return <span className="text-gray-400 text-xs text-center">Click to select</span>
+    return <span className="text-gray-400 text-xs text-center">{t("cell_click_to_select")}</span>
   }
 
   // Constraint component
@@ -558,7 +561,7 @@ export default function TangoSolver() {
     } else if (constraint === "different") {
       return <span className="text-lg font-bold text-red-600">≠</span>
     }
-    return <span className="text-gray-400 text-xs">Click</span>
+    return <span className="text-gray-400 text-xs">{t("cell_click")}</span>
   }
 
   if (!isHydrated) {
@@ -566,7 +569,7 @@ export default function TangoSolver() {
       <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-black">Loading Tango puzzle solver...</p>
+          <p className="text-black">{t("loading")}</p>
         </div>
       </div>
     )
@@ -577,18 +580,15 @@ export default function TangoSolver() {
       <div className="max-w-4xl mx-auto">
         <Card suppressHydrationWarning>
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-black">LinkedIn Tango Puzzle Solver</CardTitle>
-            <p className="text-black">
-              Free online Tango puzzle solver inspired by LinkedIn&apos;s daily puzzle game. 
-              Fill the grid with suns ☀️ and moons 🌙 following the rules. Supports multiple grid sizes!
-            </p>
+            <CardTitle className="text-3xl font-bold text-black">{t("title")}</CardTitle>
+            <p className="text-black">{t("description")}</p>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {/* Controls */}
             <div className="flex flex-wrap gap-4 justify-center items-center">
               <div className="flex items-center gap-2">
-                <Label htmlFor="grid-size" className="text-black">Grid Size:</Label>
+                <Label htmlFor="grid-size" className="text-black">{tc("grid_size_label")}</Label>
                 <Select 
                   value={gridSize.toString()} 
                   onValueChange={(value) => {
@@ -621,15 +621,15 @@ export default function TangoSolver() {
                 disabled={isLoading}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {isLoading ? "Solving..." : "🧩 Solve Puzzle"}
+                {isLoading ? t("solving") : t("solve")}
               </Button>
 
               <Button onClick={resetPuzzle} variant="outline" className="text-black">
-                🔄 Reset
+                {t("reset")}
               </Button>
 
               <Button onClick={() => setShowControls(!showControls)} variant="outline" className="text-black">
-                {showControls ? "👁️ Hide" : "👁️ Show"} Controls
+                {showControls ? t("controls_hide") : t("controls_show")}
               </Button>
 
               <Button
@@ -637,7 +637,7 @@ export default function TangoSolver() {
                 variant="outline"
                 className="bg-red-50 hover:bg-red-100 border-red-300 text-black"
               >
-                📝 Load Example
+                {t("load_example")}
               </Button>
             </div>
 
@@ -676,13 +676,13 @@ export default function TangoSolver() {
             {solved && (
               <div className="text-center space-y-4">
                 <Badge variant="default" className="text-lg px-4 py-2 bg-green-600">
-                  ✅ Puzzle Solved!
+                  {t("solved_badge")}
                 </Badge>
                 
                 {solutionCount > 1 && (
                   <div className="space-y-3">
                     <Badge variant="secondary" className="text-sm px-3 py-1 bg-gray-200 text-black border border-gray-300">
-                      🔢 {solutionCount} solution{solutionCount > 1 ? "s" : ""} found
+                      {t("solutions_found", { count: solutionCount })}
                     </Badge>
                     
                     <div className="flex justify-center gap-2 items-center">
@@ -693,10 +693,10 @@ export default function TangoSolver() {
                         disabled={allSolutions.length <= 1}
                         className="text-black"
                       >
-                        ⬅️ Previous
+                        {t("previous")}
                       </Button>
                       <span className="text-sm px-3 py-1 bg-gray-100 rounded text-black">
-                        Solution {currentSolutionIndex + 1} of {solutionCount}
+                        {tc("solution_x_of_y", { current: currentSolutionIndex + 1, total: solutionCount })}
                       </span>
                       <Button
                         onClick={nextSolution}
@@ -705,7 +705,7 @@ export default function TangoSolver() {
                         disabled={allSolutions.length <= 1}
                         className="bg-blue-50 hover:bg-blue-100 border-blue-300 text-black"
                       >
-                        ➡️ Next Solution
+                        {t("next_solution")}
                       </Button>
                     </div>
                     
@@ -715,7 +715,7 @@ export default function TangoSolver() {
                         variant="outline"
                         className="bg-orange-50 hover:bg-orange-100 border-orange-300 text-black"
                       >
-                        {showAllSolutions ? "🔽 Hide All Solutions" : "🔼 View All Solutions"}
+                        {showAllSolutions ? t("hide_all") : t("view_all")}
                       </Button>
                     )}
                   </div>
@@ -749,19 +749,19 @@ export default function TangoSolver() {
                                 <SelectItem value="empty" className="text-gray-600 hover:bg-gray-100 focus:bg-gray-100" style={{backgroundColor: 'white', color: '#6b7280'}}>
                                   <div className="flex items-center gap-2">
                                     <span className="w-6 h-6 border border-gray-300 rounded flex items-center justify-center">∅</span>
-                                    <span>Empty</span>
+                                    <span>{t("opt_empty")}</span>
                                   </div>
                                 </SelectItem>
                                 <SelectItem value="sun" className="text-black hover:bg-yellow-50 focus:bg-yellow-50" style={{backgroundColor: 'white', color: 'black'}}>
                                   <div className="flex items-center gap-2">
                                     <span className="text-3xl leading-none">☀️</span>
-                                    <span>Sun</span>
+                                    <span>{t("opt_sun")}</span>
                                   </div>
                                 </SelectItem>
                                 <SelectItem value="moon" className="text-black hover:bg-blue-50 focus:bg-blue-50" style={{backgroundColor: 'white', color: 'black'}}>
                                   <div className="flex items-center gap-2">
                                     <span className="text-3xl leading-none">🌙</span>
-                                    <span>Moon</span>
+                                    <span>{t("opt_moon")}</span>
                                   </div>
                                 </SelectItem>
                               </SelectContent>
@@ -784,19 +784,19 @@ export default function TangoSolver() {
                                   <SelectItem value="empty" className="text-gray-600 hover:bg-gray-100 focus:bg-gray-100" style={{backgroundColor: 'white', color: '#6b7280'}}>
                                     <div className="flex items-center gap-2">
                                       <span className="w-6 h-6 border border-gray-300 rounded flex items-center justify-center">∅</span>
-                                      <span>No constraint</span>
+                                      <span>{t("opt_no_constraint")}</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="equals" className="text-blue-600 hover:bg-blue-50 focus:bg-blue-50" style={{backgroundColor: 'white', color: '#2563eb'}}>
                                     <div className="flex items-center gap-2">
                                       <span className="text-lg font-bold">=</span>
-                                      <span>Must be equal</span>
+                                      <span>{t("opt_must_equal")}</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="different" className="text-red-600 hover:bg-red-50 focus:bg-red-50" style={{backgroundColor: 'white', color: '#dc2626'}}>
                                     <div className="flex items-center gap-2">
                                       <span className="text-lg font-bold">≠</span>
-                                      <span>Must be different</span>
+                                      <span>{t("opt_must_differ")}</span>
                                     </div>
                                   </SelectItem>
                                 </SelectContent>
@@ -827,19 +827,19 @@ export default function TangoSolver() {
                                   <SelectItem value="empty" className="text-gray-600 hover:bg-gray-100 focus:bg-gray-100" style={{backgroundColor: 'white', color: '#6b7280'}}>
                                     <div className="flex items-center gap-2">
                                       <span className="w-6 h-6 border border-gray-300 rounded flex items-center justify-center">∅</span>
-                                      <span>No constraint</span>
+                                      <span>{t("opt_no_constraint")}</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="equals" className="text-blue-600 hover:bg-blue-50 focus:bg-blue-50" style={{backgroundColor: 'white', color: '#2563eb'}}>
                                     <div className="flex items-center gap-2">
                                       <span className="text-lg font-bold">=</span>
-                                      <span>Must be equal</span>
+                                      <span>{t("opt_must_equal")}</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="different" className="text-red-600 hover:bg-red-50 focus:bg-red-50" style={{backgroundColor: 'white', color: '#dc2626'}}>
                                     <div className="flex items-center gap-2">
                                       <span className="text-lg font-bold">≠</span>
-                                      <span>Must be different</span>
+                                      <span>{t("opt_must_differ")}</span>
                                     </div>
                                   </SelectItem>
                                 </SelectContent>
@@ -864,7 +864,7 @@ export default function TangoSolver() {
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader>
                   <CardTitle className="text-lg text-blue-800 flex items-center gap-2">
-                    🔢 All {solutionCount} Solutions
+                    {t("all_solutions_title", { count: solutionCount })}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -873,7 +873,7 @@ export default function TangoSolver() {
                       <div key={index} className="space-y-2">
                         <div className="text-center">
                           <Badge variant="outline" className="text-xs">
-                            Solution {index + 1}
+                            {tc("solution_n", { n: index + 1 })}
                           </Badge>
                         </div>
                         <div className="inline-block border-2 border-gray-300 rounded p-2 bg-white">
@@ -901,7 +901,7 @@ export default function TangoSolver() {
                             size="sm"
                             className="text-xs"
                           >
-                            Use This
+                            {t("use_this")}
                           </Button>
                         </div>
                       </div>
@@ -915,27 +915,27 @@ export default function TangoSolver() {
             {showControls && (
               <Card className="bg-blue-50 border-blue-200">
                 <CardHeader>
-                  <CardTitle className="text-lg text-blue-800">How to Play Tango</CardTitle>
+                  <CardTitle className="text-lg text-blue-800">{t("howto_title")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-blue-800">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <p className="font-semibold">🎯 Goal:</p>
-                      <p>• Fill the {gridSize}×{gridSize} grid with suns ☀️ and moons 🌙</p>
-                      <p>• Each row and column must contain {gridSize % 2 === 0 ? `exactly ${Math.floor(gridSize / 2)} suns and ${Math.floor(gridSize / 2)} moons` : `${Math.floor(gridSize / 2)} or ${Math.ceil(gridSize / 2)} of each symbol (difference of at most 1)`}</p>
+                      <p className="font-semibold">{t("howto_goal_label")}</p>
+                      <p>• {t("howto_goal_fill", { size: gridSize })}</p>
+                      <p>• {gridSize % 2 === 0 ? t("howto_goal_balance_even", { half: Math.floor(gridSize / 2) }) : t("howto_goal_balance_odd", { floor: Math.floor(gridSize / 2), ceil: Math.ceil(gridSize / 2) })}</p>
                     </div>
                     <div className="space-y-2">
-                      <p className="font-semibold">📏 Rules:</p>
-                      <p>• No more than two identical symbols may be adjacent</p>
-                      <p>• Cells with <span className="text-blue-600 font-bold">=</span> between them must contain the same symbol</p>
-                      <p>• Cells with <span className="text-red-600 font-bold">≠</span> between them must contain different symbols</p>
+                      <p className="font-semibold">{t("howto_rules_label")}</p>
+                      <p>• {t("howto_rule_adjacent")}</p>
+                      <p>• {t.rich("howto_rule_equal", { eq: (chunks) => <span className="text-blue-600 font-bold">{chunks}</span> })}</p>
+                      <p>• {t.rich("howto_rule_different", { neq: (chunks) => <span className="text-red-600 font-bold">{chunks}</span> })}</p>
                     </div>
                   </div>
                   <div className="bg-white p-3 rounded-lg border border-blue-200">
-                    <p className="font-semibold mb-2">🖱️ How to use:</p>
-                    <p>• Click on any cell to place suns ☀️ or moons 🌙</p>
-                    <p>• Click between cells to add constraints (= or ≠)</p>
-                    <p>• Click &quot;🧩 Solve Puzzle&quot; to automatically solve the current puzzle</p>
+                    <p className="font-semibold mb-2">{t("howto_use_label")}</p>
+                    <p>• {t("howto_use_click_cell")}</p>
+                    <p>• {t("howto_use_click_between")}</p>
+                    <p>• {t("howto_use_click_solve")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -946,11 +946,9 @@ export default function TangoSolver() {
               <CardHeader>
                 <CardTitle className="text-xl text-center text-gray-800 flex items-center justify-center gap-2">
                   <span className="text-2xl">👨‍💻</span>
-                  Get In Touch
+                  {t("contact_title")}
                 </CardTitle>
-                <p className="text-center text-gray-600">
-                  Have a puzzle type you&apos;d like us to add? Found a bug? We&apos;d love to hear from you!
-                </p>
+                <p className="text-center text-gray-600">{t("contact_subtitle")}</p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -961,13 +959,13 @@ export default function TangoSolver() {
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800 mb-1">LinkedIn</h4>
+                      <h4 className="font-semibold text-gray-800 mb-1">{t("contact_linkedin_label")}</h4>
                       <Button
                         variant="link"
                         onClick={() => window.open("https://www.linkedin.com/in/cankatsarac/", "_blank")}
                         className="p-0 h-auto text-blue-600 hover:text-blue-800 text-sm"
                       >
-                        Connect with the Developer
+                        {t("contact_linkedin_cta")}
                       </Button>
                     </div>
                   </div>
@@ -979,25 +977,21 @@ export default function TangoSolver() {
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800 mb-1">Support Development</h4>
+                      <h4 className="font-semibold text-gray-800 mb-1">{t("contact_support_label")}</h4>
                       <Button
                         variant="link"
                         onClick={() => window.open("https://buymeacoffee.com/cankatsarac", "_blank")}
                         className="p-0 h-auto text-orange-600 hover:text-orange-800 text-sm"
                       >
-                        Buy me a coffee ☕
+                        {t("contact_coffee_cta")}
                       </Button>
                     </div>
                   </div>
                 </div>
 
                 <div className="text-center pt-4 border-t border-gray-200">
-                  <p className="text-sm text-gray-600 mb-3">
-                    This Tango puzzle solver was created with passion for puzzle games and web development.
-                  </p>
-                  <p className="text-xs text-gray-500 mt-3">
-                    If you enjoy this puzzle solver, consider connecting or supporting future development!
-                  </p>
+                  <p className="text-sm text-gray-600 mb-3">{t("contact_note1")}</p>
+                  <p className="text-xs text-gray-500 mt-3">{t("contact_note2")}</p>
                 </div>
               </CardContent>
             </Card>

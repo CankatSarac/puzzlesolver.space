@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,18 +18,22 @@ type Clues = {
   cells: { [key: string]: string } // Cell clues (o, d, l, r, u, m, w)
 }
 
-const CELL_TYPES = {
-  empty: "Water/Empty",
-  o: "● Single ship",
-  d: "▲ Ship top",
-  u: "▼ Ship bottom",
-  l: "◄ Ship left",
-  r: "► Ship right",
-  m: "■ Ship middle",
-  w: "~ Water",
-}
-
 export default function BattleshipSolver() {
+  const t = useTranslations("battleship")
+  const tc = useTranslations("solverCommon")
+
+  // Dropdown labels for each cell state. Symbols stay literal; text is localized.
+  const CELL_TYPES: Record<string, string> = {
+    empty: t("cell_water"),
+    o: t("cell_single"),
+    d: t("cell_top"),
+    u: t("cell_bottom"),
+    l: t("cell_left"),
+    r: t("cell_right"),
+    m: t("cell_middle"),
+    w: t("cell_wave"),
+  }
+
   const [isHydrated, setIsHydrated] = useState(false)
   const [gridSize, setGridSize] = useState(10)
   const [grid, setGrid] = useState<Grid>([])
@@ -117,11 +122,11 @@ export default function BattleshipSolver() {
         setSolved(true)
       } else {
         setSolved(false)
-        alert("No solution found. Please check your clues.")
+        alert(t("alert_no_solution"))
       }
     } catch (error) {
       console.error("Solver error:", error)
-      alert("Error solving puzzle. Please check your clues.")
+      alert(t("alert_error"))
     }
   }
 
@@ -161,7 +166,7 @@ export default function BattleshipSolver() {
       <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading battleship solver...</p>
+          <p className="text-gray-600">{t("loading")}</p>
         </div>
       </div>
     )
@@ -172,18 +177,15 @@ export default function BattleshipSolver() {
       <div className="max-w-6xl mx-auto">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold">Battleship Puzzle Solver</CardTitle>
-            <p className="text-gray-600">
-              Free online Battleship puzzle solver with interactive grid. Place ships according to row/column clues.
-              Ships cannot touch each other, even diagonally.
-            </p>
+            <CardTitle className="text-3xl font-bold">{t("title")}</CardTitle>
+            <p className="text-gray-600">{t("description")}</p>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {/* Controls */}
             <div className="flex flex-wrap gap-4 justify-center items-center">
               <div className="flex items-center gap-2">
-                <Label htmlFor="grid-size">Grid Size:</Label>
+                <Label htmlFor="grid-size">{tc("grid_size_label")}</Label>
                 <Select
                   value={gridSize.toString()}
                   onValueChange={(value: string) => setGridSize(Number.parseInt(value))}
@@ -200,29 +202,29 @@ export default function BattleshipSolver() {
               </div>
 
               <Button onClick={solvePuzzle} variant="default">
-                Solve Puzzle
+                {t("solve")}
               </Button>
 
               <Button onClick={resetPuzzle} variant="outline">
-                Reset
+                {t("reset")}
               </Button>
 
               <Button onClick={() => setShowControls(!showControls)} variant="outline">
-                {showControls ? "Hide" : "Show"} Controls
+                {showControls ? t("controls_hide") : t("controls_show")}
               </Button>
 
               <Button onClick={loadExample} variant="outline">
-                Load Example
+                {t("load_example")}
               </Button>
 
               <Button onClick={copyToClipboard} variant="outline">
-                Copy Grid
+                {t("copy_grid")}
               </Button>
             </div>
 
             {solved && (
               <div className="text-center">
-                <Badge className="text-lg px-4 py-2 bg-green-600">✓ Puzzle Solved!</Badge>
+                <Badge className="text-lg px-4 py-2 bg-green-600">{t("solved_badge")}</Badge>
               </div>
             )}
 
@@ -313,16 +315,16 @@ export default function BattleshipSolver() {
             {showControls && (
               <Card className="bg-blue-50">
                 <CardHeader>
-                  <CardTitle className="text-lg">How to Play</CardTitle>
+                  <CardTitle className="text-lg">{t("howto_title")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <p>• Place ships on the grid according to the row and column count clues</p>
-                  <p>• Ships cannot touch each other, not even diagonally</p>
-                  <p>• Use the dropdown menus to place ship parts or water</p>
-                  <p>• Standard fleet: 1×4 battleship, 2×3 cruisers, 3×2 destroyers, 4×1 submarines</p>
-                  <p>• Numbers around the edge show how many ship segments are in that row/column</p>
-                  <p>• Ship symbols: ● (single), ▲▼ (vertical ends), ◄► (horizontal ends), ■ (middle), ~ (water)</p>
-                  <p>• Click "Solve Puzzle" to automatically solve the current puzzle</p>
+                  <p>• {t("howto_place")}</p>
+                  <p>• {t("howto_touch")}</p>
+                  <p>• {t("howto_dropdown")}</p>
+                  <p>• {t("howto_fleet")}</p>
+                  <p>• {t("howto_numbers")}</p>
+                  <p>• {t("howto_symbols")}</p>
+                  <p>• {t("howto_click_solve")}</p>
                 </CardContent>
               </Card>
             )}
@@ -330,12 +332,10 @@ export default function BattleshipSolver() {
             {/* Developer Contact Section */}
             <Card className="bg-gray-100 border-gray-200">
               <CardHeader>
-                <CardTitle className="text-lg text-center">About the Developer</CardTitle>
+                <CardTitle className="text-lg text-center">{t("about_title")}</CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-4">
-                <p className="text-gray-600">
-                  This Battleship puzzle solver was created with passion for puzzle games and web development.
-                </p>
+                <p className="text-gray-600">{t("about_note1")}</p>
                 <div className="flex justify-center gap-4 flex-wrap">
                   <Button
                     variant="outline"
@@ -345,7 +345,7 @@ export default function BattleshipSolver() {
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                     </svg>
-                    Connect on LinkedIn
+                    {t("connect_linkedin")}
                   </Button>
                   <Button
                     variant="outline"
@@ -355,12 +355,10 @@ export default function BattleshipSolver() {
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M20.216 6.415l-.132-.666c-.119-.598-.388-1.163-.766-1.613a4.44 4.44 0 0 0-1.364-1.04c-.476-.275-1.039-.428-1.612-.428-.297 0-.583.034-.863.1-.274.065-.54.159-.795.275-.255.117-.49.256-.713.416-.222.16-.425.344-.61.548a2.8 2.8 0 0 0-.438.65 18.84 18.84 0 0 0-.401.968c-.074.204-.12.417-.138.632-.018.218-.006.438.038.649.044.21.123.413.232.598.109.185.249.35.417.49.17.14.363.25.577.327.214.077.439.117.663.117.224 0 .447-.04.663-.117.214-.077.406-.188.577-.327.168-.14.308-.305.417-.49.109-.185.188-.388.232-.598.044-.211.056-.431.038-.649-.018-.215-.064-.428-.138-.632a18.84 18.84 0 0 0-.401-.968 2.8 2.8 0 0 0-.438-.65 4.44 4.44 0 0 0-.61-.548c-.223-.16-.458-.299-.713-.416a4.478 4.478 0 0 0-.795-.275 4.44 4.44 0 0 0-.863-.1c-.573 0-1.136.153-1.612.428a4.44 4.44 0 0 0-1.364 1.04c-.378.45-.647 1.015-.766 1.613L3.784 6.415c-.02.1-.029.202-.026.304.003.102.017.203.041.301.024.098.058.194.101.284.043.09.095.174.154.251.059.077.125.147.198.21.073.063.153.119.238.167.085.048.175.088.268.119.093.031.189.053.286.065.097.012.195.014.292.006.097-.008.193-.026.286-.053.093-.027.183-.063.268-.108.085-.045.165-.099.238-.162.073-.063.139-.133.198-.21.059-.077.111-.161.154-.251.043-.09.077-.186.101-.284.024-.098.038-.199.041-.301.003-.102-.006-.204-.026-.304z" />
                     </svg>
-                    Buy Me a Coffee
+                    {t("buy_me_a_coffee")}
                   </Button>
                 </div>
-                <p className="text-sm text-gray-500">
-                  If you enjoy this puzzle solver, consider connecting or supporting future development!
-                </p>
+                <p className="text-sm text-gray-500">{t("about_note2")}</p>
               </CardContent>
             </Card>
           </CardContent>

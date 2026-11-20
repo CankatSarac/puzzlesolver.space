@@ -1,18 +1,18 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { SOLVERS } from "@/data/solvers";
 import { SolverCard } from "./SolverCard";
 
 export function SolverGrid() {
   const reduce = useReducedMotion();
+  const t = useTranslations("solverGrid");
   return (
     <section id="solvers" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-12">
       <div className="mb-10 text-center">
-        <h2 className="font-display text-3xl font-bold text-ink sm:text-4xl">Pick your puzzle</h2>
-        <p className="mx-auto mt-3 max-w-md text-subtle">
-          Every solver is free and runs right in your browser.
-        </p>
+        <h2 className="font-display text-3xl font-bold text-ink sm:text-4xl">{t("heading")}</h2>
+        <p className="mx-auto mt-3 max-w-md text-subtle">{t("subheading")}</p>
       </div>
 
       <motion.div
